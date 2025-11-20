@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bingo Online - Compra y Reserva</title>
-    <!-- Carga de Tailwind CSS -->
+    <!-- Carga de Tailwind CSS para estilos modernos y responsivos -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configuración de Fuentes y Colores -->
+    <!-- Configuración de Fuentes y Colores de Bingo -->
     <script>
         tailwind.config = {
             theme: {
@@ -29,18 +29,11 @@
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
         }
-        /* Estilos para el botón de WhatsApp fijo */
-        .whatsapp-button {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 50;
-        }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col items-center p-4">
 
-    <!-- MENSAJE DE CARGA/ESTADO -->
+    <!-- MENSAJE DE CARGA/ESTADO (Se usa como Loading y como Modal de Alerta) -->
     <div id="status-message" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
         <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm">
             <svg id="loading-spinner" class="animate-spin h-8 w-8 text-bingo-green mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -70,9 +63,9 @@
 
             <!-- Selector de Cantidad -->
             <div class="flex items-center justify-between space-x-2 bg-gray-50 p-3 rounded-lg border">
-                <button id="qty-minus" class="bg-gray-300 text-gray-800 p-2 rounded-full w-10 h-10 font-bold hover:bg-gray-400">-</button>
+                <button id="qty-minus" class="bg-gray-300 text-gray-800 p-2 rounded-full w-10 h-10 font-bold hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed">-</button>
                 <input id="qty-input" type="number" value="1" min="1" max="100" class="text-center font-bold text-xl w-20 border-none bg-transparent focus:outline-none" readonly>
-                <button id="qty-plus" class="bg-gray-300 text-gray-800 p-2 rounded-full w-10 h-10 font-bold hover:bg-gray-400">+</button>
+                <button id="qty-plus" class="bg-gray-300 text-gray-800 p-2 rounded-full w-10 h-10 font-bold hover:bg-gray-400 disabled:opacity-50 disabled:cursor-not-allowed">+</button>
                 <div class="flex-grow text-right">
                     <span class="text-sm text-gray-500">Total a pagar:</span>
                     <p class="text-2xl font-extrabold text-bingo-green">Bs <span id="total-amount">60,00</span></p>
@@ -89,7 +82,7 @@
                     <input id="whatsapp-input" type="tel" placeholder="Número de WhatsApp (ej: 4121234567)" required class="w-3/4 p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green">
                 </div>
                 
-                <button type="submit" class="w-full bg-bingo-yellow text-bingo-green font-extrabold py-3 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-150">
+                <button type="submit" id="main-purchase-btn" class="w-full bg-bingo-yellow text-bingo-green font-extrabold py-3 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-150">
                     COMPRAR CARTONES
                 </button>
             </form>
@@ -125,7 +118,7 @@
                 </div>
 
                 <div id="cards-grid" class="grid grid-cols-5 gap-2 h-64 overflow-y-auto p-2 bg-gray-50 rounded-lg border">
-                    <!-- Cartones se inyectarán aquí -->
+                    <div class="col-span-5 text-center p-8 text-gray-500">Cargando cartones...</div>
                 </div>
 
                 <p id="selection-error" class="text-red-500 text-sm mt-3 hidden">Debes seleccionar la cantidad exacta de cartones.</p>
@@ -216,7 +209,11 @@
         import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
-        // Global variables for Firebase
+        // =========================================================================
+        // CONFIGURACIÓN Y ESTADO INICIAL
+        // =========================================================================
+
+        // Variables globales (proporcionadas por el entorno de Canvas)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -225,15 +222,16 @@
         let userId = null;
         let isAuthReady = false;
 
-        // Configuration and State
+        // Constantes y Estado de la Aplicación
         const COST_PER_CARD = 60;
-        let availableCartones = [];
+        let availableCartones = []; // Lista completa de cartones cargados desde cartones.json
+        let reservedCardIds = new Set(); // IDs de cartones reservados en Firestore
         let totalAvailable = 0;
         let qtyToBuy = 1;
         let selectedCartones = [];
         let timerInterval;
 
-        // UI Elements
+        // Elementos de la UI
         const statusMessage = document.getElementById('status-message');
         const statusText = document.getElementById('status-text');
         const availableCardsEl = document.getElementById('available-cards');
@@ -242,6 +240,7 @@
         const nameInput = document.getElementById('name-input');
         const whatsappInput = document.getElementById('whatsapp-input');
         const purchaseForm = document.getElementById('purchase-form');
+        const mainPurchaseBtn = document.getElementById('main-purchase-btn');
         const selectionModal = document.getElementById('selection-modal');
         const paymentModal = document.getElementById('payment-modal');
         const cardsGrid = document.getElementById('cards-grid');
@@ -254,18 +253,22 @@
         const paymentForm = document.getElementById('payment-form');
         const timerDisplayEl = document.getElementById('timer-display');
         const refInput = document.getElementById('ref-input');
+        const filterInput = document.getElementById('filter-input');
 
         // =========================================================================
-        // 1. FIREBASE & AUTH SETUP
+        // FUNCIONES GLOBALES DE UI
         // =========================================================================
 
         window.showStatus = (text, isError = false) => {
             statusText.textContent = text;
             statusMessage.classList.remove('hidden');
-            if (isError) {
-                document.getElementById('loading-spinner').classList.add('hidden');
-            } else {
-                document.getElementById('loading-spinner').classList.remove('hidden');
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                if (isError) {
+                    spinner.classList.add('hidden');
+                } else {
+                    spinner.classList.remove('hidden');
+                }
             }
         }
 
@@ -273,8 +276,33 @@
             statusMessage.classList.add('hidden');
         }
 
+        window.openModal = (id) => {
+            document.getElementById(id).classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            document.body.style.overflow = '';
+            // Limpiar el temporizador si estamos cerrando el modal de pago
+            if (id === 'payment-modal') {
+                clearInterval(timerInterval);
+            }
+        }
+
+        // Simulación de función alert/modal (prohibido usar alert() nativo)
+        function alertCustom(message) {
+            // Reutilizar el modal de estado para mostrar mensajes de corta duración
+            showStatus(message, true);
+            setTimeout(hideStatus, 4000);
+        }
+
+        // =========================================================================
+        // 1. FIREBASE & AUTH SETUP
+        // =========================================================================
+
         async function initFirebase() {
-            showStatus('Inicializando Firebase...');
+            showStatus('Inicializando Firebase y autenticando...');
             try {
                 if (Object.keys(firebaseConfig).length === 0) {
                     throw new Error("La configuración de Firebase está vacía. Usando modo de simulación.");
@@ -288,29 +316,28 @@
                     const unsubscribe = onAuthStateChanged(auth, async (user) => {
                         if (user) {
                             userId = user.uid;
-                            isAuthReady = true;
-                            console.log("Usuario autenticado:", userId);
                         } else {
-                            // Intentar iniciar sesión anónimamente si no hay token personalizado
                             if (initialAuthToken) {
                                 await signInWithCustomToken(auth, initialAuthToken);
                             } else {
                                 await signInAnonymously(auth);
                             }
                         }
+                        isAuthReady = true;
                         unsubscribe();
                         resolve();
                     });
                 });
 
-                hideStatus();
+                console.log("Autenticación Firebase completada. userId:", userId);
                 loadCartonesAndListenToReservations();
+
             } catch (error) {
                 console.error("Error al inicializar Firebase o autenticar:", error);
                 // Si falla Firebase, cargamos datos de simulación
-                showStatus('Error de conexión. Cargando datos de SIMULACIÓN...', true);
                 isAuthReady = true;
                 userId = 'simulacion-user-' + Math.random().toString(36).substring(2, 9);
+                showStatus('Error de conexión a la base de datos. Cargando modo SIMULACIÓN...', true);
                 loadCartonesAndListenToReservations();
             }
         }
@@ -319,98 +346,124 @@
         // 2. DATA LOADING & REALTIME LISTENER
         // =========================================================================
 
-        // Simula la carga de cartones desde cartones.json y el listener de reservas
+        // Carga cartones y configura el listener de Firestore
         async function loadCartonesAndListenToReservations() {
-            showStatus('Cargando cartones...');
-
-            // 1. Cargar cartones de prueba (simulando fetch a cartones.json)
+            // 1. Cargar cartones de prueba (fetch a cartones.json)
             try {
                 const response = await fetch('./cartones.json');
-                if (!response.ok) throw new Error('No se encontró cartones.json');
+                if (!response.ok) throw new Error('No se encontró cartones.json. Usando datos internos.');
                 availableCartones = await response.json();
-                totalAvailable = availableCartones.length;
-                availableCardsEl.textContent = totalAvailable;
             } catch (error) {
-                console.error("Error al cargar cartones.json, usando datos internos:", error);
-                availableCartones = [
-                    {"id": 1, "b": [5, 12, 1, 15, 8], "i": [22, 19, 28, 30, 16], "n": [35, 42, 33, 40, 31], "g": [50, 55, 48, 59, 46], "o": [61, 70, 75, 63, 68]},
-                    {"id": 2, "b": [3, 14, 9, 11, 2], "i": [17, 25, 21, 29, 18], "n": [38, 44, 41, 32, 36], "g": [52, 47, 60, 54, 51], "o": [65, 72, 69, 62, 74]},
-                    {"id": 3, "b": [7, 2, 13, 4, 10], "i": [20, 26, 23, 19, 27], "n": [45, 34, 39, 43, 37], "g": [58, 49, 53, 56, 48], "o": [71, 66, 64, 73, 67]},
-                    {"id": 4, "b": [1, 6, 15, 8, 3], "i": [24, 16, 22, 28, 30], "n": [31, 40, 35, 42, 33], "g": [46, 55, 50, 59, 57], "o": [63, 68, 75, 61, 70]},
-                    {"id": 5, "b": [10, 5, 12, 9, 14], "i": [29, 18, 25, 21, 17], "n": [36, 32, 44, 38, 41], "g": [51, 54, 47, 52, 60], "o": [74, 62, 72, 65, 69]},
-                    {"id": 6, "b": [4, 13, 7, 2, 11], "i": [27, 23, 20, 26, 19], "n": [37, 43, 34, 45, 39], "g": [48, 56, 58, 49, 53], "o": [67, 73, 66, 71, 64]},
-                    {"id": 7, "b": [15, 8, 3, 6, 1], "i": [30, 22, 16, 24, 28], "n": [33, 35, 40, 31, 42], "g": [57, 50, 55, 46, 59], "o": [70, 75, 68, 63, 61]},
-                    {"id": 8, "b": [9, 14, 5, 10, 12], "i": [21, 25, 18, 29, 17], "n": [41, 38, 32, 36, 44], "g": [60, 47, 54, 51, 52], "o": [69, 72, 62, 74, 65]},
-                    {"id": 9, "b": [2, 11, 4, 13, 7], "i": [26, 20, 23, 27, 19], "n": [39, 45, 43, 37, 34], "g": [53, 58, 56, 48, 49], "o": [64, 66, 73, 67, 71]},
-                    {"id": 10, "b": [8, 1, 15, 3, 6], "i": [28, 24, 30, 16, 22], "n": [42, 31, 35, 33, 40], "g": [59, 57, 46, 50, 55], "o": [68, 63, 61, 70, 75]}
-                ];
-                totalAvailable = availableCartones.length;
-                availableCardsEl.textContent = `${totalAvailable} (Simulación)`;
+                console.warn(error.message);
+                availableCartones = generateFallbackCards(10);
+                // Si falla, usamos un conjunto fijo de 10 cartones de respaldo.
             }
-
+            
             // 2. Listener de reservas de Firestore (solo si Firebase está listo)
             if (isAuthReady && db) {
                 const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
                 onSnapshot(reservationsCollection, (snapshot) => {
-                    const reservedIds = new Set();
+                    const newReservedIds = new Set();
                     snapshot.forEach((doc) => {
-                        // Asumimos que el campo 'cardIds' es un array de IDs reservados
                         const data = doc.data();
                         if (data.cardIds && Array.isArray(data.cardIds)) {
-                            data.cardIds.forEach(id => reservedIds.add(id));
+                            // Solo considera como "reservados" los que aún no están confirmados como PAGADOS
+                            if (data.status !== 'PAGADO') { 
+                                data.cardIds.forEach(id => newReservedIds.add(id));
+                            }
                         }
                     });
-                    
-                    // Actualizar el estado de los cartones
-                    updateCardStatus(reservedIds);
+                    reservedCardIds = newReservedIds;
+                    updateCardStatus(); // Actualiza el contador y la UI
                     hideStatus();
                 }, (error) => {
                     console.error("Error al escuchar reservas de Firestore:", error);
+                    updateCardStatus(); // Ejecuta con datos de simulación
                     hideStatus();
                 });
             } else {
                 // Sin Firestore: asumimos que todos están disponibles
-                updateCardStatus(new Set());
+                reservedCardIds = new Set();
+                updateCardStatus();
                 hideStatus();
             }
         }
 
-        // Actualiza el estado visual de los cartones disponibles
-        function updateCardStatus(reservedIds) {
-            // Para simplificar, esta función solo actualiza el número total,
-            // pero en una app real actualizaría la lista 'availableCartones'
-            // para que no se puedan seleccionar cartones reservados.
-            
-            // Simulación: No se actualiza el estado de la grilla de selección,
-            // solo el contador principal.
-            let currentlyAvailable = availableCartones.length - reservedIds.size;
-            totalAvailable = Math.max(0, currentlyAvailable);
+        // Actualiza el estado visual de los cartones disponibles y habilita/deshabilita la compra
+        function updateCardStatus() {
+            // Filtramos los cartones realmente disponibles
+            const availableCardObjects = availableCartones.filter(card => !reservedCardIds.has(card.id));
+            totalAvailable = availableCardObjects.length;
             
             // Si el texto de availableCardsEl ya contiene "(Simulación)", lo conservamos
-            if (availableCardsEl.textContent.includes('Simulación')) {
-                availableCardsEl.textContent = `${totalAvailable} (Simulación)`;
-            } else {
+            if (db) {
                 availableCardsEl.textContent = totalAvailable;
+            } else {
+                availableCardsEl.textContent = `${totalAvailable} (Simulación)`;
             }
 
-            if (totalAvailable < qtyToBuy) {
+            // Forzar actualización de cantidad si excede la disponibilidad
+            if (qtyToBuy > totalAvailable) {
                 qtyToBuy = totalAvailable > 0 ? 1 : 0;
-                updateQuantityAndTotal(0);
             }
+
+            if (totalAvailable === 0) {
+                qtyToBuy = 0;
+                mainPurchaseBtn.disabled = true;
+                mainPurchaseBtn.textContent = "AGOTADO";
+                updateQuantityAndTotal(0);
+            } else {
+                mainPurchaseBtn.disabled = false;
+                mainPurchaseBtn.textContent = "COMPRAR CARTONES";
+                updateQuantityAndTotal(0); // Actualiza la UI con la cantidad corregida
+            }
+
+            // Asegurar que los botones de cantidad reflejen el estado
+            document.getElementById('qty-minus').disabled = qtyToBuy <= 1;
+            document.getElementById('qty-plus').disabled = qtyToBuy >= totalAvailable;
         }
-        
+
+        // Generador de cartones de respaldo en caso de que cartones.json falle
+        function generateFallbackCards(count) {
+            const fallback = [];
+            for (let i = 1; i <= count; i++) {
+                fallback.push({
+                    "id": i, 
+                    "b": [1, 2, 3, 4, 5].map(n => n * i),
+                    "i": [16, 17, 18, 19, 20].map(n => n + i),
+                    "n": [31, 32, 33, 34, 35].map(n => n + i),
+                    "g": [46, 47, 48, 49, 50].map(n => n + i),
+                    "o": [61, 62, 63, 64, 65].map(n => n + i)
+                });
+            }
+            return fallback;
+        }
+
         // =========================================================================
-        // 3. UI LOGIC (Quantity, Modals, Clipboard, WhatsApp)
+        // 3. LÓGICA DE INTERACCIÓN DE LA UI
         // =========================================================================
 
         // Función para actualizar la cantidad y el total a pagar
         function updateQuantityAndTotal(delta) {
             qtyToBuy += delta;
+            
+            // Límites
             if (qtyToBuy < 1) qtyToBuy = 1;
             if (qtyToBuy > totalAvailable) qtyToBuy = totalAvailable;
+            
+            // Actualizar botones de cantidad
+            document.getElementById('qty-minus').disabled = qtyToBuy <= 1;
+            document.getElementById('qty-plus').disabled = qtyToBuy >= totalAvailable;
 
             qtyInput.value = qtyToBuy;
-            const total = qtyToBuy * COST_PER_CARD;
+            
+            // Aplicar lógica de descuentos/promociones
+            let total;
+            if (qtyToBuy === 4) total = 200;
+            else if (qtyToBuy === 8) total = 300;
+            else if (qtyToBuy === 12) total = 400;
+            else total = qtyToBuy * COST_PER_CARD;
+
             totalAmountEl.textContent = total.toFixed(2).replace('.', ',');
         }
 
@@ -425,40 +478,60 @@
             showSelectionModal();
         });
 
-        // ======================== MODAL HANDLERS ========================
-
-        function openModal(id) {
-            document.getElementById(id).classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-
-        window.closeModal = (id) => {
-            document.getElementById(id).classList.add('hidden');
-            document.body.style.overflow = '';
-            // Limpiar el temporizador si estamos cerrando el modal de pago
-            if (id === 'payment-modal') {
-                clearInterval(timerInterval);
-            }
-        }
+        // ======================== MODAL DE SELECCIÓN ========================
 
         function showSelectionModal() {
+            if (totalAvailable === 0) {
+                 alertCustom('No hay cartones disponibles para comprar.');
+                 return;
+            }
             maxSelectionEl.textContent = qtyToBuy;
-            selectedCartones = [];
+            selectedCartones = []; // Resetear selección
+            filterInput.value = ''; // Limpiar filtro
             
-            // Generar la grilla de cartones disponibles (Simulación)
-            cardsGrid.innerHTML = '';
-            availableCartones.slice(0, 100).forEach(card => { // Mostramos solo los primeros 100
-                const button = document.createElement('button');
-                button.textContent = card.id;
-                button.className = 'card-btn bg-gray-200 text-gray-700 w-full aspect-square rounded-full flex items-center justify-center text-sm font-semibold hover:bg-bingo-yellow transition duration-100';
-                button.dataset.cardId = card.id;
-                button.addEventListener('click', () => toggleCardSelection(card.id, button));
-                cardsGrid.appendChild(button);
-            });
+            // 1. Generar la grilla de cartones disponibles
+            renderCardsGrid();
             
             updateSelectionState();
             openModal('selection-modal');
         }
+
+        // Renderiza los botones de cartones en la grilla
+        function renderCardsGrid() {
+            cardsGrid.innerHTML = '';
+            const filter = filterInput.value.trim().toLowerCase();
+            
+            // Filtrar y mostrar solo cartones disponibles
+            const cardsToDisplay = availableCartones
+                .filter(card => !reservedCardIds.has(card.id)) // Solo disponibles
+                .filter(card => String(card.id).includes(filter) || filter === ''); // Aplicar filtro
+            
+            if (cardsToDisplay.length === 0) {
+                cardsGrid.innerHTML = `<div class="col-span-5 text-center p-8 text-gray-500">
+                    No se encontraron cartones disponibles que coincidan con "${filter}".
+                </div>`;
+                return;
+            }
+
+            cardsToDisplay.forEach(card => { 
+                const button = document.createElement('button');
+                button.textContent = card.id;
+                
+                // Determinar el estilo basado en si está seleccionado
+                const isSelected = selectedCartones.includes(card.id);
+                button.className = isSelected 
+                    ? 'card-btn bg-bingo-yellow text-bingo-green font-extrabold ring-2 ring-bingo-green w-full aspect-square rounded-full flex items-center justify-center text-sm transition duration-100'
+                    : 'card-btn bg-gray-200 text-gray-700 w-full aspect-square rounded-full flex items-center justify-center text-sm font-semibold hover:bg-bingo-yellow hover:text-bingo-green transition duration-100';
+                    
+                button.dataset.cardId = card.id;
+                button.addEventListener('click', () => toggleCardSelection(card.id, button));
+                cardsGrid.appendChild(button);
+            });
+        }
+        
+        // Listener para filtrar la grilla
+        filterInput.addEventListener('input', renderCardsGrid);
+
 
         function toggleCardSelection(id, button) {
             const index = selectedCartones.indexOf(id);
@@ -474,7 +547,7 @@
                 button.classList.add('bg-bingo-yellow', 'text-bingo-green', 'font-extrabold', 'ring-2', 'ring-bingo-green');
             } else {
                 // Límite alcanzado
-                alertCustom('Solo puedes seleccionar ' + qtyToBuy + ' cartones.');
+                alertCustom(`Solo puedes seleccionar ${qtyToBuy} cartones.`);
             }
             updateSelectionState();
         }
@@ -502,9 +575,11 @@
             showPaymentModal();
         });
 
-        // Función para mostrar el modal de Pago
+        // ======================== MODAL DE PAGO ========================
+        
         function showPaymentModal() {
-            paymentAmountEl.textContent = (qtyToBuy * COST_PER_CARD).toFixed(2).replace('.', ',');
+            const total = qtyToBuy * COST_PER_CARD; // Recalculamos el total sin promoción para el display de pago exacto.
+            paymentAmountEl.textContent = total.toFixed(2).replace('.', ',');
             selectedCardsDisplayEl.textContent = selectedCartones.join(', ');
             
             // Iniciar temporizador de 5 minutos
@@ -512,8 +587,6 @@
 
             openModal('payment-modal');
         }
-
-        // ======================== PROCESO DE PAGO ========================
 
         // Iniciar Temporizador
         function startTimer(durationSeconds) {
@@ -529,7 +602,8 @@
                     clearInterval(timerInterval);
                     timerDisplayEl.textContent = '00:00';
                     alertCustom('El tiempo para la reserva ha expirado. Intenta de nuevo.');
-                    closeModal('payment-modal');
+                    // Forzar el cierre para evitar envíos tardíos
+                    closeModal('payment-modal'); 
                     return;
                 }
                 time--;
@@ -546,9 +620,10 @@
             const reference = refInput.value;
             const name = nameInput.value;
             const whatsapp = whatsappInput.value;
+            const amount = parseFloat(paymentAmountEl.textContent.replace(',', '.')); // Monto exacto para el pago
 
             closeModal('payment-modal');
-            showStatus('Reservando cartones y enviando a WhatsApp...');
+            showStatus('Reservando cartones y generando mensaje de WhatsApp...');
 
             try {
                 const reservationData = {
@@ -556,64 +631,65 @@
                     name: name,
                     whatsapp: whatsapp,
                     cardIds: selectedCartones,
-                    amount: qtyToBuy * COST_PER_CARD,
+                    amount: amount,
                     reference: reference,
                     proofFile: document.getElementById('proof-file').files[0] ? 'Subido' : 'No subido',
                     timestamp: serverTimestamp ? serverTimestamp() : new Date(),
                     status: 'PENDIENTE_PAGO',
                 };
 
+                // 1. Guardar Reserva en Firestore
                 if (isAuthReady && db) {
                     const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
                     await addDoc(reservationsCollection, reservationData);
+                    console.log("Reserva guardada en Firestore:", reservationData);
                 } else {
-                    console.warn("Firestore no está disponible, la reserva no se guardó. (Simulación)");
+                    console.warn("Firestore no está disponible. La reserva NO se guardó. (Simulación)");
                 }
 
-                // Generar enlace de WhatsApp
+                // 2. Generar enlace de WhatsApp
+                const cartonesList = selectedCartones.join(', ');
                 const whatsappMessage = `¡Hola! Acabo de realizar una RESERVA en Bingo Online.\n\n` +
                                         `*Datos de la Reserva:*\n` +
-                                        `Nombre: ${name}\n` +
-                                        `Teléfono: ${whatsapp}\n` +
-                                        `Cartones (${qtyToBuy}): ${selectedCartones.join(', ')}\n` +
-                                        `Monto Pagado: Bs ${reservationData.amount.toFixed(2).replace('.', ',')}\n` +
-                                        `Ref. Pago Móvil: ${reference}\n\n` +
-                                        `Por favor, procesar mi solicitud.`;
+                                        `👤 Nombre: ${name}\n` +
+                                        `📞 Teléfono: ${whatsapp}\n` +
+                                        `🔢 Cartones (${qtyToBuy}): ${cartonesList}\n` +
+                                        `💵 Monto Pagado: Bs ${amount.toFixed(2).replace('.', ',')}\n` +
+                                        `#️⃣ Ref. Pago Móvil: ${reference}\n\n` +
+                                        `Por favor, procesar mi solicitud y enviar mis cartones.`;
                 
-                const whatsappUrl = `https://wa.me/584244945763?text=${encodeURIComponent(whatsappMessage)}`;
+                // Usar el número de Pago Móvil de la simulación
+                const whatsappTargetNumber = '584244945763';
+                const whatsappUrl = `https://wa.me/${whatsappTargetNumber}?text=${encodeURIComponent(whatsappMessage)}`;
                 
                 window.open(whatsappUrl, '_blank');
                 
                 hideStatus();
-                alertCustom('¡Reserva realizada! Te hemos redirigido a WhatsApp para que envíes el comprobante.');
+                alertCustom('¡Reserva registrada! Te hemos redirigido a WhatsApp para que finalices el envío.');
                 
             } catch (error) {
                 console.error("Error al procesar la reserva:", error);
-                showStatus('Error al procesar la reserva. Intenta de nuevo.', true);
+                showStatus('Error grave al procesar la reserva. Intenta de nuevo.', true);
             }
         });
 
 
         // ======================== UTILITIES ========================
 
-        // Simulación de función alert/modal (prohibido usar alert() nativo)
-        function alertCustom(message) {
-            // Reutilizar el modal de estado para mostrar mensajes
-            showStatus(message, true);
-            setTimeout(hideStatus, 4000);
-        }
-
         // Función para copiar al portapapeles
         window.copyToClipboard = (elementId) => {
             let textToCopy;
+            // Si es el monto, se usa el valor calculado, sino el contenido del elemento
             if (elementId === 'payment-amount') {
-                textToCopy = (qtyToBuy * COST_PER_CARD).toFixed(2);
+                // Obtenemos el valor real para copiar (sin el "Bs ")
+                textToCopy = paymentAmountEl.textContent;
             } else {
                 textToCopy = document.getElementById(elementId).textContent;
             }
             
+            // Usar execCommand('copy') por restricción de iframe
             const tempInput = document.createElement('textarea');
-            tempInput.value = textToCopy;
+            tempInput.value = textToCopy.replace('Bs ', '').replace(',', '.'); // Limpiar formato para copiar solo el número
             document.body.appendChild(tempInput);
             tempInput.select();
             document.execCommand('copy');
@@ -621,14 +697,14 @@
             alertCustom('¡Copiado: ' + textToCopy + '!');
         }
 
-        // Función para actualizar el nombre del archivo subido
+        // Función para actualizar el nombre del archivo subido en el UI
         window.updateFileName = (input) => {
             const fileName = input.files[0] ? input.files[0].name : 'Subir comprobante de pago (Opcional)';
             document.getElementById('file-upload-text').textContent = fileName;
         }
 
 
-        // Inicializar la aplicación
+        // Inicializar la aplicación al cargar la ventana
         window.onload = initFirebase;
     </script>
 
