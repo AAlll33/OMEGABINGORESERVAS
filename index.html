@@ -3,40 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Carabobo Clone</title>
+    <title>Bingo Omega Reserva</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <!-- IMPORTANTE: Usamos estas versiones para que funcione directo en el navegador -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
     <header>
-        <h1>BINGO ONLINE</h1>
+        <h1>BINGO OMEGA</h1>
+        <p class="subtitle">¡Reserva tu cartón ganador!</p>
     </header>
 
     <main>
-        <div class="search-section">
-            <input type="number" placeholder="Buscar # de cartón...">
-            <button>Buscar</button>
+        <!-- Buscador -->
+        <div class="search-container">
+            <input type="number" id="searchInput" placeholder="Buscar cartón #...">
+            <button onclick="searchCard()">BUSCAR</button>
         </div>
 
-        <div id="bingoCardsContainer" class="bingo-cards-container">
-            <p style="color: white; text-align: center;">Cargando cartones...</p>
+        <!-- Leyenda de colores -->
+        <div class="legend">
+            <span class="badge available">Disponible</span>
+            <span class="badge reserved">Reservado</span>
+            <span class="badge sold">Vendido</span>
+        </div>
+
+        <!-- Aquí aparecen los circulitos -->
+        <div id="bingoCardsContainer" class="bingo-grid-container">
+            <p style="color: #aaa; width: 100%; text-align: center;">Cargando cartones...</p>
         </div>
     </main>
 
+    <!-- EL MODAL (La ventana emergente verde estilo Carabobo) -->
     <div id="cardModal" class="modal">
         <div class="modal-content">
             <span class="close-button">&times;</span>
-            <h2 style="color: var(--accent-gold);">CARTÓN <span id="modalCardId"></span></h2>
             
-            <div id="modalCardContent" class="bingo-card-visual"></div>
+            <div class="modal-header">
+                <h2>CARTÓN #<span id="modalCardId">000</span></h2>
+            </div>
 
-            <div id="timer" style="color: white; margin: 10px 0;"></div>
-            <button id="actionButton" class="reserve-button">RESERVAR CARTÓN</button>
+            <!-- El cartón visual -->
+            <div id="modalCardVisual" class="visual-card">
+                <!-- Aquí se genera la grilla con JS -->
+            </div>
+
+            <div id="statusMessage" class="status-msg"></div>
+
+            <!-- Botones de acción -->
+            <button id="btnReservar" class="action-btn btn-yellow">RESERVAR CARTÓN</button>
+            <button id="btnCerrar" class="action-btn btn-outline">CERRAR</button>
         </div>
     </div>
+
+    <footer>
+        <p>&copy; 2025 Omega Bingo Reservas</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
 </html>
+
