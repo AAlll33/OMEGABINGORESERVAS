@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Online - Compra y Reserva</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de Fuentes y Colores -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bingo-green': '#1e5e31',
+                        'bingo-yellow': '#ffcd00',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Estilos generales para el fondo y la fuente */
+        body {
+            background-color: #f0f0f0;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        /* Estilos para el botón de WhatsApp fijo */
+        .whatsapp-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col items-center p-4">
+
+    <!-- MENSAJE DE CARGA/ESTADO -->
+    <div id="status-message" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm">
+            <svg id="loading-spinner" class="animate-spin h-8 w-8 text-bingo-green mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="status-text" class="text-gray-700 font-semibold">Cargando aplicación...</p>
+        </div>
+    </div>
+
+    <!-- Contenedor Principal -->
+    <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden mt-4">
+
+        <!-- Encabezado del Evento -->
+        <div class="bg-bingo-green text-center p-4">
+            <h1 class="text-white text-xl font-extrabold">¡MARTES 18-11-25!</h1>
+            <div class="bg-gray-700 text-white text-sm py-1 px-4 rounded-full mt-2 inline-block">Costo del cartón: Bs. 60,00</div>
+        </div>
+
+        <!-- Cuerpo de Compra -->
+        <div class="p-6">
+            <div class="bg-bingo-yellow text-bingo-green text-center font-bold p-2 rounded-lg mb-4">
+                PROMOCIONES: 4×Bs 200 · 8×Bs 300 · 12×Bs 400
+            </div>
+
+            <p class="text-sm text-gray-600 mb-4">Disponibles: <span id="available-cards" class="font-bold text-bingo-green">Cargando...</span></p>
+
+            <!-- Selector de Cantidad -->
+            <div class="flex items-center justify-between space-x-2 bg-gray-50 p-3 rounded-lg border">
+                <button id="qty-minus" class="bg-gray-300 text-gray-800 p-2 rounded-full w-10 h-10 font-bold hover:bg-gray-400">-</button>
+                <input id="qty-input" type="number" value="1" min="1" max="100" class="text-center font-bold text-xl w-20 border-none bg-transparent focus:outline-none" readonly>
+                <button id="qty-plus" class="bg-gray-300 text-gray-800 p-2 rounded-full w-10 h-10 font-bold hover:bg-gray-400">+</button>
+                <div class="flex-grow text-right">
+                    <span class="text-sm text-gray-500">Total a pagar:</span>
+                    <p class="text-2xl font-extrabold text-bingo-green">Bs <span id="total-amount">60,00</span></p>
+                </div>
+            </div>
+            
+            <!-- Formulario de Datos -->
+            <form id="purchase-form" class="mt-6 space-y-4">
+                <input id="name-input" type="text" placeholder="Nombre completo" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green">
+                <div class="flex space-x-2">
+                    <select class="p-3 border border-gray-300 rounded-lg w-1/4 focus:ring-bingo-green focus:border-bingo-green">
+                        <option value="+58">+58</option>
+                    </select>
+                    <input id="whatsapp-input" type="tel" placeholder="Número de WhatsApp (ej: 4121234567)" required class="w-3/4 p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green">
+                </div>
+                
+                <button type="submit" class="w-full bg-bingo-yellow text-bingo-green font-extrabold py-3 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-150">
+                    COMPRAR CARTONES
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Botón de Consultar Mis Cartones (Simulación) -->
+    <div class="w-full max-w-lg mt-4">
+        <button id="consult-cartones-btn" class="w-full bg-gray-300 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-400 transition duration-150 flex items-center justify-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+            <span>CONSULTAR MIS CARTONES</span>
+        </button>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 1: SELECCIÓN DE CARTONES -->
+    <!-- ========================================================================= -->
+    <div id="selection-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 hidden" aria-modal="true" role="dialog">
+        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="p-4 flex justify-between items-center bg-bingo-green text-white">
+                <h2 class="text-lg font-semibold">Proceso de compra</h2>
+                <button onclick="closeModal('selection-modal')" class="text-white hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-gray-600 mb-4">Selecciona tus cartones (Máximo: <span id="max-selection"></span>)</p>
+                <input type="text" id="filter-input" placeholder="Filtra tus cartones favoritos..." class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-bingo-green focus:border-bingo-green">
+                
+                <div id="selected-message" class="text-center text-sm text-bingo-green font-semibold mb-4 hidden">
+                    Ya seleccionaste tus cartones, continúa con tu compra
+                    <p class="text-xl mt-1">↓</p>
+                </div>
+
+                <div id="cards-grid" class="grid grid-cols-5 gap-2 h-64 overflow-y-auto p-2 bg-gray-50 rounded-lg border">
+                    <!-- Cartones se inyectarán aquí -->
+                </div>
+
+                <p id="selection-error" class="text-red-500 text-sm mt-3 hidden">Debes seleccionar la cantidad exacta de cartones.</p>
+                
+                <button id="continue-selection-btn" class="w-full bg-bingo-yellow text-bingo-green font-extrabold py-3 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-150 mt-4" disabled>
+                    CONTINUAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 2: PROCESO DE PAGO MÓVIL / RESERVA -->
+    <!-- ========================================================================= -->
+    <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 hidden" aria-modal="true" role="dialog">
+        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="p-4 flex justify-between items-center bg-bingo-green text-white">
+                <h2 class="text-lg font-semibold">Proceso de compra</h2>
+                <button onclick="closeModal('payment-modal')" class="text-white hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <!-- Temporizador y Alerta -->
+                <div class="bg-bingo-yellow/20 border-l-4 border-bingo-yellow p-4 mb-4 rounded-lg">
+                    <p class="text-sm text-gray-800 font-semibold"><svg class="w-5 h-5 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"></path></svg> Tienes <span id="timer-display" class="font-extrabold text-bingo-green">05:00</span> para completar el pago.</p>
+                    <p class="text-xs text-gray-600 mt-1">Asegúrate de pagar el monto exacto que indicamos. De lo contrario no podremos validar la operación.</p>
+                </div>
+
+                <!-- Detalles de Pago -->
+                <div class="space-y-3 mb-6">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="font-semibold text-gray-700">Monto exacto:</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg font-bold text-bingo-green">Bs <span id="payment-amount">60,00</span></span>
+                            <button onclick="copyToClipboard('payment-amount')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                        </div>
+                    </div>
+                    <!-- PAGO MÓVIL DUMMY DATA -->
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-700">Banco:</span>
+                        <span class="text-sm font-medium">Banco de Venezuela (0102)</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-700">Teléfono:</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-medium" id="payment-phone">04244945763</span>
+                            <button onclick="copyToClipboard('payment-phone')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-gray-700">Cédula:</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-medium" id="payment-cedula">V17450017</span>
+                            <button onclick="copyToClipboard('payment-cedula')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center border-t pt-2">
+                        <span class="font-semibold text-gray-700">Cartones seleccionados:</span>
+                        <span class="text-sm font-medium" id="selected-cards-display">152</span>
+                    </div>
+                </div>
+
+                <!-- Formulario de Comprobante -->
+                <form id="payment-form" class="space-y-4">
+                    <input id="ref-input" type="text" placeholder="Últimos 4 dígitos de la referencia" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green" maxlength="4" pattern="\d{4}">
+                    
+                    <div class="border border-dashed border-gray-400 rounded-lg p-4 text-center">
+                        <label for="proof-file" class="cursor-pointer text-bingo-green font-bold flex items-center justify-center space-x-2 hover:underline">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L6.914 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            <span id="file-upload-text">Subir comprobante de pago (Opcional)</span>
+                        </label>
+                        <input id="proof-file" type="file" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                    </div>
+
+                    <button type="submit" class="w-full bg-bingo-green text-white font-extrabold py-3 rounded-xl shadow-lg hover:bg-green-700 transition duration-150">
+                        RESERVAR CARTONES
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        // Global variables for Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+        let userId = null;
+        let isAuthReady = false;
+
+        // Configuration and State
+        const COST_PER_CARD = 60;
+        let availableCartones = [];
+        let totalAvailable = 0;
+        let qtyToBuy = 1;
+        let selectedCartones = [];
+        let timerInterval;
+
+        // UI Elements
+        const statusMessage = document.getElementById('status-message');
+        const statusText = document.getElementById('status-text');
+        const availableCardsEl = document.getElementById('available-cards');
+        const totalAmountEl = document.getElementById('total-amount');
+        const qtyInput = document.getElementById('qty-input');
+        const nameInput = document.getElementById('name-input');
+        const whatsappInput = document.getElementById('whatsapp-input');
+        const purchaseForm = document.getElementById('purchase-form');
+        const selectionModal = document.getElementById('selection-modal');
+        const paymentModal = document.getElementById('payment-modal');
+        const cardsGrid = document.getElementById('cards-grid');
+        const maxSelectionEl = document.getElementById('max-selection');
+        const selectionErrorEl = document.getElementById('selection-error');
+        const continueSelectionBtn = document.getElementById('continue-selection-btn');
+        const selectedMessageEl = document.getElementById('selected-message');
+        const paymentAmountEl = document.getElementById('payment-amount');
+        const selectedCardsDisplayEl = document.getElementById('selected-cards-display');
+        const paymentForm = document.getElementById('payment-form');
+        const timerDisplayEl = document.getElementById('timer-display');
+        const refInput = document.getElementById('ref-input');
+
+        // =========================================================================
+        // 1. FIREBASE & AUTH SETUP
+        // =========================================================================
+
+        window.showStatus = (text, isError = false) => {
+            statusText.textContent = text;
+            statusMessage.classList.remove('hidden');
+            if (isError) {
+                document.getElementById('loading-spinner').classList.add('hidden');
+            } else {
+                document.getElementById('loading-spinner').classList.remove('hidden');
+            }
+        }
+
+        window.hideStatus = () => {
+            statusMessage.classList.add('hidden');
+        }
+
+        async function initFirebase() {
+            showStatus('Inicializando Firebase...');
+            try {
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("La configuración de Firebase está vacía. Usando modo de simulación.");
+                }
+                setLogLevel('debug');
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                await new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            isAuthReady = true;
+                            console.log("Usuario autenticado:", userId);
+                        } else {
+                            // Intentar iniciar sesión anónimamente si no hay token personalizado
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        }
+                        unsubscribe();
+                        resolve();
+                    });
+                });
+
+                hideStatus();
+                loadCartonesAndListenToReservations();
+            } catch (error) {
+                console.error("Error al inicializar Firebase o autenticar:", error);
+                // Si falla Firebase, cargamos datos de simulación
+                showStatus('Error de conexión. Cargando datos de SIMULACIÓN...', true);
+                isAuthReady = true;
+                userId = 'simulacion-user-' + Math.random().toString(36).substring(2, 9);
+                loadCartonesAndListenToReservations();
+            }
+        }
+
+        // =========================================================================
+        // 2. DATA LOADING & REALTIME LISTENER
+        // =========================================================================
+
+        // Simula la carga de cartones desde cartones.json y el listener de reservas
+        async function loadCartonesAndListenToReservations() {
+            showStatus('Cargando cartones...');
+
+            // 1. Cargar cartones de prueba (simulando fetch a cartones.json)
+            try {
+                const response = await fetch('./cartones.json');
+                if (!response.ok) throw new Error('No se encontró cartones.json');
+                availableCartones = await response.json();
+                totalAvailable = availableCartones.length;
+                availableCardsEl.textContent = totalAvailable;
+            } catch (error) {
+                console.error("Error al cargar cartones.json, usando datos internos:", error);
+                availableCartones = [
+                    {"id": 1, "b": [5, 12, 1, 15, 8], "i": [22, 19, 28, 30, 16], "n": [35, 42, 33, 40, 31], "g": [50, 55, 48, 59, 46], "o": [61, 70, 75, 63, 68]},
+                    {"id": 2, "b": [3, 14, 9, 11, 2], "i": [17, 25, 21, 29, 18], "n": [38, 44, 41, 32, 36], "g": [52, 47, 60, 54, 51], "o": [65, 72, 69, 62, 74]},
+                    {"id": 3, "b": [7, 2, 13, 4, 10], "i": [20, 26, 23, 19, 27], "n": [45, 34, 39, 43, 37], "g": [58, 49, 53, 56, 48], "o": [71, 66, 64, 73, 67]},
+                    {"id": 4, "b": [1, 6, 15, 8, 3], "i": [24, 16, 22, 28, 30], "n": [31, 40, 35, 42, 33], "g": [46, 55, 50, 59, 57], "o": [63, 68, 75, 61, 70]},
+                    {"id": 5, "b": [10, 5, 12, 9, 14], "i": [29, 18, 25, 21, 17], "n": [36, 32, 44, 38, 41], "g": [51, 54, 47, 52, 60], "o": [74, 62, 72, 65, 69]},
+                    {"id": 6, "b": [4, 13, 7, 2, 11], "i": [27, 23, 20, 26, 19], "n": [37, 43, 34, 45, 39], "g": [48, 56, 58, 49, 53], "o": [67, 73, 66, 71, 64]},
+                    {"id": 7, "b": [15, 8, 3, 6, 1], "i": [30, 22, 16, 24, 28], "n": [33, 35, 40, 31, 42], "g": [57, 50, 55, 46, 59], "o": [70, 75, 68, 63, 61]},
+                    {"id": 8, "b": [9, 14, 5, 10, 12], "i": [21, 25, 18, 29, 17], "n": [41, 38, 32, 36, 44], "g": [60, 47, 54, 51, 52], "o": [69, 72, 62, 74, 65]},
+                    {"id": 9, "b": [2, 11, 4, 13, 7], "i": [26, 20, 23, 27, 19], "n": [39, 45, 43, 37, 34], "g": [53, 58, 56, 48, 49], "o": [64, 66, 73, 67, 71]},
+                    {"id": 10, "b": [8, 1, 15, 3, 6], "i": [28, 24, 30, 16, 22], "n": [42, 31, 35, 33, 40], "g": [59, 57, 46, 50, 55], "o": [68, 63, 61, 70, 75]}
+                ];
+                totalAvailable = availableCartones.length;
+                availableCardsEl.textContent = `${totalAvailable} (Simulación)`;
+            }
+
+            // 2. Listener de reservas de Firestore (solo si Firebase está listo)
+            if (isAuthReady && db) {
+                const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
+                onSnapshot(reservationsCollection, (snapshot) => {
+                    const reservedIds = new Set();
+                    snapshot.forEach((doc) => {
+                        // Asumimos que el campo 'cardIds' es un array de IDs reservados
+                        const data = doc.data();
+                        if (data.cardIds && Array.isArray(data.cardIds)) {
+                            data.cardIds.forEach(id => reservedIds.add(id));
+                        }
+                    });
+                    
+                    // Actualizar el estado de los cartones
+                    updateCardStatus(reservedIds);
+                    hideStatus();
+                }, (error) => {
+                    console.error("Error al escuchar reservas de Firestore:", error);
+                    hideStatus();
+                });
+            } else {
+                // Sin Firestore: asumimos que todos están disponibles
+                updateCardStatus(new Set());
+                hideStatus();
+            }
+        }
+
+        // Actualiza el estado visual de los cartones disponibles
+        function updateCardStatus(reservedIds) {
+            // Para simplificar, esta función solo actualiza el número total,
+            // pero en una app real actualizaría la lista 'availableCartones'
+            // para que no se puedan seleccionar cartones reservados.
+            
+            // Simulación: No se actualiza el estado de la grilla de selección,
+            // solo el contador principal.
+            let currentlyAvailable = availableCartones.length - reservedIds.size;
+            totalAvailable = Math.max(0, currentlyAvailable);
+            
+            // Si el texto de availableCardsEl ya contiene "(Simulación)", lo conservamos
+            if (availableCardsEl.textContent.includes('Simulación')) {
+                availableCardsEl.textContent = `${totalAvailable} (Simulación)`;
+            } else {
+                availableCardsEl.textContent = totalAvailable;
+            }
+
+            if (totalAvailable < qtyToBuy) {
+                qtyToBuy = totalAvailable > 0 ? 1 : 0;
+                updateQuantityAndTotal(0);
+            }
+        }
+        
+        // =========================================================================
+        // 3. UI LOGIC (Quantity, Modals, Clipboard, WhatsApp)
+        // =========================================================================
+
+        // Función para actualizar la cantidad y el total a pagar
+        function updateQuantityAndTotal(delta) {
+            qtyToBuy += delta;
+            if (qtyToBuy < 1) qtyToBuy = 1;
+            if (qtyToBuy > totalAvailable) qtyToBuy = totalAvailable;
+
+            qtyInput.value = qtyToBuy;
+            const total = qtyToBuy * COST_PER_CARD;
+            totalAmountEl.textContent = total.toFixed(2).replace('.', ',');
+        }
+
+        // Event Listeners para cantidad
+        document.getElementById('qty-minus').addEventListener('click', () => updateQuantityAndTotal(-1));
+        document.getElementById('qty-plus').addEventListener('click', () => updateQuantityAndTotal(1));
+        
+        // Event Listener para el formulario de Compra
+        purchaseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Abrir modal de selección de cartones
+            showSelectionModal();
+        });
+
+        // ======================== MODAL HANDLERS ========================
+
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            document.body.style.overflow = '';
+            // Limpiar el temporizador si estamos cerrando el modal de pago
+            if (id === 'payment-modal') {
+                clearInterval(timerInterval);
+            }
+        }
+
+        function showSelectionModal() {
+            maxSelectionEl.textContent = qtyToBuy;
+            selectedCartones = [];
+            
+            // Generar la grilla de cartones disponibles (Simulación)
+            cardsGrid.innerHTML = '';
+            availableCartones.slice(0, 100).forEach(card => { // Mostramos solo los primeros 100
+                const button = document.createElement('button');
+                button.textContent = card.id;
+                button.className = 'card-btn bg-gray-200 text-gray-700 w-full aspect-square rounded-full flex items-center justify-center text-sm font-semibold hover:bg-bingo-yellow transition duration-100';
+                button.dataset.cardId = card.id;
+                button.addEventListener('click', () => toggleCardSelection(card.id, button));
+                cardsGrid.appendChild(button);
+            });
+            
+            updateSelectionState();
+            openModal('selection-modal');
+        }
+
+        function toggleCardSelection(id, button) {
+            const index = selectedCartones.indexOf(id);
+            if (index > -1) {
+                // Deseleccionar
+                selectedCartones.splice(index, 1);
+                button.classList.remove('bg-bingo-yellow', 'text-bingo-green', 'font-extrabold', 'ring-2', 'ring-bingo-green');
+                button.classList.add('bg-gray-200', 'text-gray-700');
+            } else if (selectedCartones.length < qtyToBuy) {
+                // Seleccionar
+                selectedCartones.push(id);
+                button.classList.remove('bg-gray-200', 'text-gray-700');
+                button.classList.add('bg-bingo-yellow', 'text-bingo-green', 'font-extrabold', 'ring-2', 'ring-bingo-green');
+            } else {
+                // Límite alcanzado
+                alertCustom('Solo puedes seleccionar ' + qtyToBuy + ' cartones.');
+            }
+            updateSelectionState();
+        }
+
+        function updateSelectionState() {
+            const count = selectedCartones.length;
+            const required = qtyToBuy;
+
+            // Habilitar/Deshabilitar botón de CONTINUAR
+            if (count === required) {
+                continueSelectionBtn.disabled = false;
+                selectedMessageEl.classList.remove('hidden');
+                selectionErrorEl.classList.add('hidden');
+            } else {
+                continueSelectionBtn.disabled = true;
+                selectedMessageEl.classList.add('hidden');
+                selectionErrorEl.classList.remove('hidden');
+            }
+            selectionErrorEl.textContent = `Seleccionados: ${count} de ${required}. Debes seleccionar la cantidad exacta.`;
+        }
+
+        // Event Listener para continuar selección
+        continueSelectionBtn.addEventListener('click', () => {
+            closeModal('selection-modal');
+            showPaymentModal();
+        });
+
+        // Función para mostrar el modal de Pago
+        function showPaymentModal() {
+            paymentAmountEl.textContent = (qtyToBuy * COST_PER_CARD).toFixed(2).replace('.', ',');
+            selectedCardsDisplayEl.textContent = selectedCartones.join(', ');
+            
+            // Iniciar temporizador de 5 minutos
+            startTimer(5 * 60);
+
+            openModal('payment-modal');
+        }
+
+        // ======================== PROCESO DE PAGO ========================
+
+        // Iniciar Temporizador
+        function startTimer(durationSeconds) {
+            clearInterval(timerInterval);
+            let time = durationSeconds;
+            
+            function updateTimer() {
+                const minutes = String(Math.floor(time / 60)).padStart(2, '0');
+                const seconds = String(time % 60).padStart(2, '0');
+                timerDisplayEl.textContent = `${minutes}:${seconds}`;
+
+                if (time <= 0) {
+                    clearInterval(timerInterval);
+                    timerDisplayEl.textContent = '00:00';
+                    alertCustom('El tiempo para la reserva ha expirado. Intenta de nuevo.');
+                    closeModal('payment-modal');
+                    return;
+                }
+                time--;
+            }
+
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        // Event Listener para Formulario de Pago (Reserva)
+        paymentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const reference = refInput.value;
+            const name = nameInput.value;
+            const whatsapp = whatsappInput.value;
+
+            closeModal('payment-modal');
+            showStatus('Reservando cartones y enviando a WhatsApp...');
+
+            try {
+                const reservationData = {
+                    userId: userId,
+                    name: name,
+                    whatsapp: whatsapp,
+                    cardIds: selectedCartones,
+                    amount: qtyToBuy * COST_PER_CARD,
+                    reference: reference,
+                    proofFile: document.getElementById('proof-file').files[0] ? 'Subido' : 'No subido',
+                    timestamp: serverTimestamp ? serverTimestamp() : new Date(),
+                    status: 'PENDIENTE_PAGO',
+                };
+
+                if (isAuthReady && db) {
+                    const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
+                    await addDoc(reservationsCollection, reservationData);
+                } else {
+                    console.warn("Firestore no está disponible, la reserva no se guardó. (Simulación)");
+                }
+
+                // Generar enlace de WhatsApp
+                const whatsappMessage = `¡Hola! Acabo de realizar una RESERVA en Bingo Online.\n\n` +
+                                        `*Datos de la Reserva:*\n` +
+                                        `Nombre: ${name}\n` +
+                                        `Teléfono: ${whatsapp}\n` +
+                                        `Cartones (${qtyToBuy}): ${selectedCartones.join(', ')}\n` +
+                                        `Monto Pagado: Bs ${reservationData.amount.toFixed(2).replace('.', ',')}\n` +
+                                        `Ref. Pago Móvil: ${reference}\n\n` +
+                                        `Por favor, procesar mi solicitud.`;
+                
+                const whatsappUrl = `https://wa.me/584244945763?text=${encodeURIComponent(whatsappMessage)}`;
+                
+                window.open(whatsappUrl, '_blank');
+                
+                hideStatus();
+                alertCustom('¡Reserva realizada! Te hemos redirigido a WhatsApp para que envíes el comprobante.');
+                
+            } catch (error) {
+                console.error("Error al procesar la reserva:", error);
+                showStatus('Error al procesar la reserva. Intenta de nuevo.', true);
+            }
+        });
+
+
+        // ======================== UTILITIES ========================
+
+        // Simulación de función alert/modal (prohibido usar alert() nativo)
+        function alertCustom(message) {
+            // Reutilizar el modal de estado para mostrar mensajes
+            showStatus(message, true);
+            setTimeout(hideStatus, 4000);
+        }
+
+        // Función para copiar al portapapeles
+        window.copyToClipboard = (elementId) => {
+            let textToCopy;
+            if (elementId === 'payment-amount') {
+                textToCopy = (qtyToBuy * COST_PER_CARD).toFixed(2);
+            } else {
+                textToCopy = document.getElementById(elementId).textContent;
+            }
+            
+            const tempInput = document.createElement('textarea');
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            alertCustom('¡Copiado: ' + textToCopy + '!');
+        }
+
+        // Función para actualizar el nombre del archivo subido
+        window.updateFileName = (input) => {
+            const fileName = input.files[0] ? input.files[0].name : 'Subir comprobante de pago (Opcional)';
+            document.getElementById('file-upload-text').textContent = fileName;
+        }
+
+
+        // Inicializar la aplicación
+        window.onload = initFirebase;
+    </script>
+
+</body>
+</html>
+
