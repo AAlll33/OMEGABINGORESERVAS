@@ -1,80 +1,96 @@
 :root {
-    --main-green: #0f3923; /* Verde oscuro Carabobo */
-    --accent-gold: #ffc107; /* Dorado/Amarillo */
-    --text-light: #ffffff;
-    --dark-bg: #121212;
+    --bg-dark: #121212;
     --card-bg: #1e1e1e;
+    --main-green: #0f3923; /* El verde oscuro de Carabobo */
+    --bright-green: #1a5c38;
+    --gold: #ffc107;
+    --text-white: #ffffff;
 }
 
 body {
     font-family: 'Roboto', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-white);
     margin: 0;
     padding: 0;
-    background-color: var(--dark-bg);
-    color: var(--text-light);
 }
 
 header {
-    background-color: var(--main-green);
+    background: var(--main-green);
     padding: 15px;
     text-align: center;
-    border-bottom: 3px solid var(--accent-gold);
+    border-bottom: 4px solid var(--gold);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 header h1 {
     margin: 0;
-    color: var(--accent-gold);
+    color: var(--gold);
     text-transform: uppercase;
+    font-size: 1.8rem;
     letter-spacing: 2px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.subtitle {
+    color: #ccc;
+    margin: 5px 0 0 0;
+    font-size: 0.9rem;
 }
 
 main {
     padding: 20px;
-    max-width: 600px; /* Ancho móvil */
+    max-width: 800px;
     margin: 0 auto;
 }
 
 /* Buscador */
-.search-section {
-    background-color: var(--card-bg);
-    padding: 15px;
-    border-radius: 10px;
+.search-container {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
 }
-
-input[type="number"] {
-    background: #333;
-    border: 1px solid #555;
+.search-container input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background: #222;
     color: white;
-    padding: 10px;
-    border-radius: 5px;
-    width: 100%;
+    font-size: 1rem;
 }
-
-button {
-    background-color: var(--accent-gold);
-    color: #000;
+.search-container button {
+    background: var(--gold);
     border: none;
-    font-weight: bold;
-    padding: 10px 20px;
+    padding: 0 20px;
     border-radius: 5px;
-    cursor: pointer;
-    text-transform: uppercase;
+    font-weight: bold;
+    color: #000;
 }
 
-/* La Grilla de Circulitos (Tokens) */
-.bingo-cards-container {
+/* Leyenda */
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.badge { font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; }
+.badge.available { background: white; color: black; }
+.badge.reserved { background: #ffeba7; color: #5c4802; }
+.badge.sold { background: #ffcccc; color: darkred; }
+
+/* GRILLA DE CIRCULITOS (TOKENS) */
+.bingo-grid-container {
     display: grid;
-    grid-template-columns: repeat(5, 1fr); /* 5 por fila */
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     gap: 10px;
     justify-items: center;
 }
 
-.carton-token {
-    width: 50px;
-    height: 50px;
+.token {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background-color: white;
     color: #333;
@@ -85,35 +101,28 @@ button {
     font-weight: bold;
     border: 2px solid #ccc;
     cursor: pointer;
+    transition: transform 0.1s;
     position: relative;
 }
 
-.carton-token span {
-    font-size: 0.8rem;
-}
+.token:active { transform: scale(0.95); }
 
-.carton-token .ver-btn {
-    font-size: 0.5rem;
-    background: var(--main-green);
-    color: white;
-    padding: 2px 5px;
-    border-radius: 3px;
+.token .num { font-size: 1.1rem; }
+.token .ver-text { 
+    font-size: 0.55rem; 
+    background: var(--main-green); 
+    color: white; 
+    padding: 2px 6px; 
+    border-radius: 10px; 
     margin-top: 2px;
 }
 
-/* Estados de los circulitos */
-.carton-token.reservado {
-    border-color: var(--accent-gold);
-    background-color: #fff3cd;
-    opacity: 0.6;
-}
-.carton-token.vendido {
-    border-color: red;
-    background-color: #ffcccc;
-    opacity: 0.4;
-}
+/* Estados del Token */
+.token.reservado { background-color: #ffeeba; border-color: var(--gold); opacity: 0.8; }
+.token.vendido { background-color: #333; color: #777; border-color: #444; cursor: not-allowed; }
+.token.vendido .ver-text { background: #555; }
 
-/* EL CARTÓN VERDE GRANDE (MODAL) */
+/* --- MODAL (VENTANA EMERGENTE) --- */
 .modal {
     display: none;
     position: fixed;
@@ -122,57 +131,21 @@ button {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.85);
+    background-color: rgba(0,0,0,0.9);
     justify-content: center;
     align-items: center;
 }
 
 .modal-content {
     background-color: var(--main-green);
-    padding: 20px;
-    border-radius: 15px;
-    border: 2px solid var(--accent-gold);
     width: 90%;
-    max-width: 400px;
-    text-align: center;
-    position: relative;
-}
-
-.bingo-card-visual {
-    background-color: var(--main-green);
-    border: 2px solid var(--accent-gold);
-    padding: 10px;
+    max-width: 350px;
+    padding: 20px;
     border-radius: 10px;
-    margin: 15px 0;
-}
-
-.bingo-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 3px;
-}
-
-.cell {
-    background-color: transparent;
-    border: 1px solid #4a8c6f;
-    color: white;
-    font-size: 1.2rem;
-    font-weight: bold;
-    padding: 10px 0;
-    border-radius: 3px;
-}
-.header-cell {
-    color: var(--accent-gold);
-    font-size: 1.4rem;
-    border: none;
-}
-
-/* Botones de Acción */
-.reserve-button {
-    width: 100%;
-    padding: 15px;
-    font-size: 1.1rem;
-    margin-top: 10px;
+    border: 2px solid var(--gold);
+    text-align: center;
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.3);
+    position: relative;
 }
 
 .close-button {
@@ -180,6 +153,67 @@ button {
     top: 10px;
     right: 15px;
     color: white;
-    font-size: 25px;
+    font-size: 24px;
     cursor: pointer;
 }
+
+.modal-header h2 {
+    color: var(--gold);
+    margin: 0 0 15px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 10px;
+}
+
+/* El Cartón Visual dentro del Modal */
+.visual-card {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    background: #0a2918;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #4a8c6f;
+    margin-bottom: 15px;
+}
+
+.cell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    background: transparent;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+    border: 1px solid #1f5738;
+}
+
+.header-cell {
+    color: var(--gold);
+    font-size: 1rem;
+    border: none;
+    height: 30px;
+}
+
+/* Botones y Estados */
+.action-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 10px;
+    text-transform: uppercase;
+}
+
+.btn-yellow { background-color: var(--gold); color: #000; }
+.btn-outline { background-color: transparent; border: 1px solid white; color: white; }
+
+.status-msg {
+    margin: 10px 0;
+    font-weight: bold;
+    color: var(--gold);
+}
+
