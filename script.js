@@ -1,121 +1,150 @@
-// --- PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE ---
+// 1. CONFIGURACIÓN DE FIREBASE (Tus datos reales)
 const firebaseConfig = {
-    apiKey: "TU_API_KEY_AQUI",
-    authDomain: "TU_PROYECTO.firebaseapp.com",
-    projectId: "TU_PROYECTO_ID",
-    storageBucket: "TU_PROYECTO.appspot.com",
-    messagingSenderId: "TU_SENDER_ID",
-    appId: "TU_APP_ID",
-    databaseURL: "https://TU_PROYECTO-default-rtdb.firebaseio.com" 
+  apiKey: "AIzaSyB6VLXeRU5qQ8qhC5fSOUvJHJwWfy_17ks",
+  authDomain: "omegabingoreserva.firebaseapp.com",
+  projectId: "omegabingoreserva",
+  storageBucket: "omegabingoreserva.firebasestorage.app",
+  messagingSenderId: "79927996266",
+  appId: "1:79927996266:web:6bcb502804e8a402913f13"
 };
-// ---------------------------------------------
 
-// Inicializar Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+// 2. INICIALIZAR FIREBASE
+// Usamos "compat" para que funcione fácil en el navegador del celular
+firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-let allBingoCards = [];
-const bingoCardsContainer = document.getElementById('bingoCardsContainer');
-const cardModal = document.getElementById('cardModal');
+// Variables globales
+let allCards = [];
+const container = document.getElementById('bingoCardsContainer');
+const modal = document.getElementById('cardModal');
 
-// 1. Cargar Cartones (JSON)
-async function loadBingoCards() {
+// 3. CARGAR DATOS AL INICIAR
+document.addEventListener('DOMContentLoaded', () => {
+    loadCards();
+});
+
+async function loadCards() {
     try {
+        // Cargar JSON
         const response = await fetch('cartones.json');
-        allBingoCards = await response.json();
-        // Escuchar cambios en Firebase en tiempo real
+        allCards = await response.json();
+        
+        // Escuchar cambios en la base de datos en tiempo real
         database.ref('estado_cartones').on('value', (snapshot) => {
             const states = snapshot.val() || {};
             renderTokens(states);
         });
+
     } catch (error) {
-        console.error("Error cargando cartones:", error);
-        bingoCardsContainer.innerHTML = "<p style='color:white'>Error cargando datos o cartones.json no encontrado.</p>";
+        console.error(error);
+        container.innerHTML = '<p style="color:white">Error cargando cartones.json</p>';
     }
 }
 
-// 2. Dibujar los Circulitos (Tokens)
+// 4. DIBUJAR LOS CIRCULITOS (TOKENS)
 function renderTokens(states) {
-    bingoCardsContainer.innerHTML = '';
-    allBingoCards.forEach(card => {
+    container.innerHTML = ''; // Limpiar
+
+    allCards.forEach(card => {
+        // Obtener estado de Firebase o 'disponible' por defecto
         const stateData = states[card.id] || { estado: 'disponible' };
-        const statusClass = stateData.estado; // disponible, reservado, vendido
-        
-        // Crear el circulito
+        const estado = stateData.estado;
+
+        // Crear elemento HTML
         const token = document.createElement('div');
-        token.className = `carton-token ${statusClass}`;
+        token.className = `token ${estado}`;
         token.innerHTML = `
-            <span>${card.id}</span>
-            <div class="ver-btn">VER</div>
+            <span class="num">${card.id}</span>
+            <span class="ver-text">VER</span>
         `;
-        
-        // Al hacer clic, abrir el modal estilo Carabobo
-        token.addEventListener('click', () => openModal(card, stateData));
-        bingoCardsContainer.appendChild(token);
+
+        // Click evento
+        token.addEventListener('click', () => {
+            openModal(card, stateData);
+        });
+
+        container.appendChild(token);
     });
 }
 
-// 3. Abrir Modal (Ver Cartón Verde)
+// 5. ABRIR EL MODAL (VERDE)
 function openModal(card, stateData) {
-    const modalContent = document.getElementById('modalCardContent');
-    const btnAction = document.getElementById('actionButton');
-    const timerDisplay = document.getElementById('timer');
+    const modalId = document.getElementById('modalCardId');
+    const modalVisual = document.getElementById('modalCardVisual');
+    const btnReservar = document.getElementById('btnReservar');
+    const statusMsg = document.getElementById('statusMessage');
 
-    // Generar la grilla verde
-    let html = `<div class="bingo-grid">`;
+    modalId.innerText = card.id;
+
+    // Construir el cartón visual (Grilla 5x5)
+    let html = '';
     const headers = ['B','I','N','G','O'];
-    headers.forEach(h => html += `<div class="cell header-cell">${h}</div>`);
-    
+    headers.forEach(h => html += `<div class="header-cell">${h}</div>`);
+
+    // Filas
     for(let i=0; i<5; i++) {
         html += `<div class="cell">${card.b[i]}</div>`;
         html += `<div class="cell">${card.i[i]}</div>`;
-        html += `<div class="cell">${i===2 ? '★' : card.n[i]}</div>`; // Estrella en el centro
+        html += `<div class="cell">${i===2 ? '★' : card.n[i]}</div>`; // Centro estrella
         html += `<div class="cell">${card.g[i]}</div>`;
         html += `<div class="cell">${card.o[i]}</div>`;
     }
-    html += `</div>`;
-    
-    modalContent.innerHTML = html;
-    document.getElementById('modalCardId').innerText = `#${card.id}`;
-    cardModal.style.display = 'flex';
+    modalVisual.innerHTML = html;
 
-    // Configurar Botón según estado
-    if (stateData.estado === 'disponible') {
-        btnAction.style.display = 'block';
-        btnAction.innerText = 'RESERVAR CARTÓN';
-        btnAction.onclick = () => reserveCard(card.id);
-        timerDisplay.innerText = '';
+    // Lógica de botones según estado
+    if(stateData.estado === 'disponible') {
+        statusMsg.innerText = '';
+        btnReservar.style.display = 'block';
+        btnReservar.onclick = () => reservarCarton(card.id);
     } else if (stateData.estado === 'reservado') {
-        btnAction.style.display = 'none'; // Ocultar botón si ya está reservado
-        timerDisplay.innerText = 'Este cartón está reservado.';
+        statusMsg.innerText = '⚠ ESTE CARTÓN YA ESTÁ RESERVADO';
+        btnReservar.style.display = 'none';
     } else {
-        btnAction.style.display = 'none';
-        timerDisplay.innerText = 'VENDIDO';
+        statusMsg.innerText = '❌ VENDIDO';
+        btnReservar.style.display = 'none';
     }
+
+    modal.style.display = 'flex';
 }
 
-// 4. Reservar
-function reserveCard(id) {
-    const btn = document.getElementById('actionButton');
+// 6. FUNCIÓN RESERVAR (GUARDAR EN FIREBASE)
+function reservarCarton(id) {
+    const btn = document.getElementById('btnReservar');
     btn.innerText = 'Procesando...';
-    
-    database.ref(`estado_cartones/${id}`).set({
+
+    // Guardar en la base de datos
+    database.ref('estado_cartones/' + id).set({
         estado: 'reservado',
-        timestamp: Date.now()
+        fecha: Date.now()
     }).then(() => {
-        alert('¡Cartón Reservado! Tienes 5 minutos para pagar.');
-        cardModal.style.display = 'none';
-    }).catch(e => {
-        alert('Error al reservar: ' + e.message);
+        alert('¡Cartón reservado con éxito!');
+        modal.style.display = 'none';
+        btn.innerText = 'RESERVAR CARTÓN';
+    }).catch(error => {
+        alert('Error: ' + error.message);
+        btn.innerText = 'RESERVAR CARTÓN';
     });
 }
 
-// Cerrar Modal
-document.querySelector('.close-button').addEventListener('click', () => {
-    cardModal.style.display = 'none';
-});
+// Cerrar modal
+document.querySelector('.close-button').addEventListener('click', () => modal.style.display = 'none');
+document.getElementById('btnCerrar').addEventListener('click', () => modal.style.display = 'none');
 
-// Iniciar
-document.addEventListener('DOMContentLoaded', loadBingoCards);
+// Buscador simple
+function searchCard() {
+    const id = document.getElementById('searchInput').value;
+    if(!id) return;
+    
+    // Buscar en el array
+    const found = allCards.find(c => c.id == id);
+    if(found) {
+        // Necesitamos obtener el estado actual para abrir el modal correctamente
+        database.ref('estado_cartones/' + id).once('value').then(snapshot => {
+            const state = snapshot.val() || { estado: 'disponible' };
+            openModal(found, state);
+        });
+    } else {
+        alert('Cartón no encontrado');
+    }
+}
+
