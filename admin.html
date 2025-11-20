@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Bingo</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bingo-green': '#1e5e31',
+                        'bingo-yellow': '#ffcd00',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f0f0f0; min-height: 100vh; }
+        .reservation-card { 
+            transition: all 0.3s ease-in-out; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4">
+
+    <!-- MODAL/STATUS: Mensajes de Carga y Alerta -->
+    <div id="status-message" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm">
+            <svg id="loading-spinner" class="animate-spin h-8 w-8 text-bingo-green mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="status-text" class="text-gray-700 font-semibold">Inicializando Panel de Administración...</p>
+            <button id="close-status-btn" class="mt-4 bg-bingo-green text-white px-4 py-2 rounded-lg hidden" onclick="hideStatus()">Entendido</button>
+        </div>
+    </div>
+    
+    <!-- MODAL: Ver Comprobante -->
+    <div id="proof-modal" class="fixed inset-0 bg-black bg-opacity-80 z-40 flex items-center justify-center p-4 hidden" aria-modal="true" role="dialog">
+        <div class="bg-white rounded-xl w-full max-w-xl shadow-2xl overflow-hidden">
+            <div class="p-4 flex justify-between items-center bg-bingo-green text-white">
+                <h2 class="text-lg font-semibold">Comprobante de Pago</h2>
+                <button onclick="closeModal('proof-modal')" class="text-white hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-4">
+                <img id="proof-image" src="" alt="Comprobante de Pago" class="w-full h-auto rounded-lg">
+                <p id="proof-ref" class="text-center mt-2 text-sm text-gray-600 font-medium"></p>
+            </div>
+        </div>
+    </div>
+
+    <header class="text-center mb-6">
+        <h1 class="text-3xl font-extrabold text-bingo-green">Panel de Administración</h1>
+        <p class="text-gray-600">Gestión de Reservas y Ventas en Tiempo Real</p>
+    </header>
+
+    <div class="w-full max-w-5xl mx-auto">
+        
+        <!-- PESTAÑAS DE FILTRO -->
+        <div class="flex space-x-2 border-b mb-6 sticky top-0 bg-gray-100 pt-2 z-10">
+            <button class="tab-btn p-3 font-semibold rounded-t-lg transition duration-150" data-status="PENDIENTE_PAGO">
+                Pendientes (<span id="count-PENDIENTE_PAGO">0</span>)
+            </button>
+            <button class="tab-btn p-3 font-semibold rounded-t-lg transition duration-150" data-status="PAGADO">
+                Confirmados (<span id="count-PAGADO">0</span>)
+            </button>
+            <button class="tab-btn p-3 font-semibold rounded-t-lg transition duration-150" data-status="RECHAZADO">
+                Rechazados (<span id="count-RECHAZADO">0</span>)
+            </button>
+        </div>
+
+        <!-- CONTENEDOR DE RESERVAS -->
+        <div id="reservations-container" class="space-y-4">
+            <p id="no-reservations" class="text-center text-gray-500 p-10 bg-white rounded-lg hidden">No hay reservas en este estado.</p>
+        </div>
+
+    </div>
+
+    <!-- Firebase Imports y Lógica del Administrador -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, updateDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        // =========================================================================
+        // CONFIGURACIÓN Y ESTADO INICIAL
+        // =========================================================================
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+        let isAuthReady = false;
+        let allReservations = []; // Lista completa de reservas
+        let currentStatusFilter = 'PENDIENTE_PAGO'; // Filtro inicial
+
+        // UI Elements
+        const statusMessage = document.getElementById('status-message');
+        const statusText = document.getElementById('status-text');
+        const reservationsContainer = document.getElementById('reservations-container');
+        const proofModal = document.getElementById('proof-modal');
+        const proofImage = document.getElementById('proof-image');
+        const proofRef = document.getElementById('proof-ref');
+        const tabButtons = document.querySelectorAll('.tab-btn');
+
+        // =========================================================================
+        // FUNCIONES GLOBALES DE UI
+        // =========================================================================
+
+        window.showStatus = (text, isError = false, isFinal = false) => {
+            statusText.textContent = text;
+            statusMessage.classList.remove('hidden');
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.classList.toggle('hidden', isError || isFinal);
+            }
+            document.getElementById('close-status-btn').classList.toggle('hidden', !isFinal && !isError);
+        }
+
+        window.hideStatus = () => {
+            statusMessage.classList.add('hidden');
+        }
+
+        window.openModal = (id) => {
+            document.getElementById(id).classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // =========================================================================
+        // 1. FIREBASE & AUTH SETUP
+        // =========================================================================
+
+        async function initFirebase() {
+            showStatus('Inicializando base de datos...');
+            try {
+                setLogLevel('error'); 
+                if (Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Configuración de Firebase vacía.");
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                await new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        if (!user) {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        }
+                        isAuthReady = true;
+                        unsubscribe();
+                        resolve();
+                    });
+                });
+
+                console.log("Autenticación Firebase completada.");
+                setupListeners();
+                setupTabs();
+
+            } catch (error) {
+                console.error("Error al inicializar Firebase o autenticar:", error);
+                showStatus('ERROR: No se pudo conectar a la base de datos.', true, true);
+            }
+        }
+
+        // =========================================================================
+        // 2. DATA LISTENER & REALTIME RENDERING
+        // =========================================================================
+        
+        function setupListeners() {
+             if (!isAuthReady || !db) return;
+             
+             const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
+             // Consulta todas las reservas para poder filtrar en el cliente
+             const q = query(reservationsCollection); 
+
+             onSnapshot(q, (snapshot) => {
+                 allReservations = [];
+                 const statusCounts = { 'PENDIENTE_PAGO': 0, 'PAGADO': 0, 'RECHAZADO': 0 };
+
+                 snapshot.forEach((doc) => {
+                     const data = doc.data();
+                     const reservation = { id: doc.id, ...data };
+                     allReservations.push(reservation);
+                     if (statusCounts.hasOwnProperty(reservation.status)) {
+                         statusCounts[reservation.status]++;
+                     }
+                 });
+
+                 updateTabCounts(statusCounts);
+                 renderReservations();
+                 hideStatus();
+             }, (error) => {
+                 console.error("Error al escuchar reservas de Firestore:", error);
+                 showStatus('Error de conexión en tiempo real.', true, true);
+             });
+        }
+        
+        function updateTabCounts(counts) {
+            document.getElementById('count-PENDIENTE_PAGO').textContent = counts['PENDIENTE_PAGO'];
+            document.getElementById('count-PAGADO').textContent = counts['PAGADO'];
+            document.getElementById('count-RECHAZADO').textContent = counts['RECHAZADO'];
+        }
+
+        function renderReservations() {
+            const filteredReservations = allReservations.filter(res => res.status === currentStatusFilter);
+            reservationsContainer.innerHTML = '';
+
+            if (filteredReservations.length === 0) {
+                document.getElementById('no-reservations').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('no-reservations').classList.add('hidden');
+
+            // Ordenar por más reciente (timestamp descendente)
+            filteredReservations.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+            filteredReservations.forEach(res => {
+                const card = createReservationCard(res);
+                reservationsContainer.appendChild(card);
+            });
+        }
+
+        function createReservationCard(res) {
+            const card = document.createElement('div');
+            card.className = `reservation-card bg-white p-5 rounded-xl border-l-4 ${
+                res.status === 'PENDIENTE_PAGO' ? 'border-bingo-yellow' :
+                res.status === 'PAGADO' ? 'border-bingo-green' : 'border-red-500'
+            }`;
+
+            const date = res.timestamp ? new Date(res.timestamp.seconds * 1000).toLocaleString() : 'N/A';
+            const statusText = {
+                'PENDIENTE_PAGO': 'PENDIENTE DE CONFIRMACIÓN',
+                'PAGADO': 'PAGO CONFIRMADO',
+                'RECHAZADO': 'PAGO RECHAZADO'
+            };
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-3 border-b pb-2">
+                    <div>
+                        <p class="text-xs font-medium text-gray-500">${date}</p>
+                        <h2 class="text-xl font-bold text-gray-800">${res.name}</h2>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-lg font-extrabold ${res.status === 'PENDIENTE_PAGO' ? 'text-bingo-yellow' : 'text-bingo-green'}">Bs ${res.amount ? res.amount.toFixed(2).replace('.', ',') : 'N/A'}</p>
+                        <p class="text-sm font-semibold">${statusText[res.status]}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-sm text-gray-700 mb-4">
+                    <div>
+                        <span class="font-bold">Teléfono:</span> ${res.whatsapp || 'N/A'}
+                    </div>
+                    <div>
+                        <span class="font-bold">Cartones (${res.quantity || 0}):</span> ${res.cardIds ? res.cardIds.join(', ') : 'N/A'}
+                    </div>
+                    <div class="col-span-2">
+                        <span class="font-bold">Ref. Pago Móvil:</span> ${res.reference || 'N/A'}
+                    </div>
+                    <div class="col-span-2">
+                         <span class="font-bold text-xs text-gray-500">ID Reserva: ${res.id}</span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-3 border-t">
+                    <button class="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm font-medium hover:bg-gray-300 transition duration-150" data-proof-url="${res.proofUrl}" data-ref="${res.reference || 'N/A'}">
+                        Ver Comprobante
+                    </button>
+                    ${res.status === 'PENDIENTE_PAGO' ? `
+                        <button class="flex-grow bg-bingo-green text-white px-4 py-1 rounded-lg text-sm font-extrabold hover:bg-green-700 transition duration-150" onclick="updateReservationStatus('${res.id}', 'PAGADO')">
+                            CONFIRMAR PAGO
+                        </button>
+                        <button class="bg-red-500 text-white px-4 py-1 rounded-lg text-sm font-bold hover:bg-red-600 transition duration-150" onclick="updateReservationStatus('${res.id}', 'RECHAZADO')">
+                            RECHAZAR
+                        </button>
+                    ` : ''}
+                     ${res.status === 'RECHAZADO' ? `
+                        <button class="flex-grow bg-gray-500 text-white px-4 py-1 rounded-lg text-sm font-extrabold hover:bg-gray-600 transition duration-150" onclick="updateReservationStatus('${res.id}', 'PENDIENTE_PAGO')">
+                            RESTAURAR A PENDIENTE
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Adjuntar evento al botón de ver comprobante
+            const proofButton = card.querySelector('[data-proof-url]');
+            if (proofButton) {
+                proofButton.addEventListener('click', (e) => showProofModal(e.target.dataset.proofUrl, e.target.dataset.ref));
+            }
+
+            return card;
+        }
+
+        // =========================================================================
+        // 3. LÓGICA DEL ADMINISTRADOR (ACCIONES DE FIREBASE)
+        // =========================================================================
+
+        function setupTabs() {
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => {
+                         btn.style.borderBottom = 'none';
+                         btn.classList.remove('text-bingo-green', 'border-bingo-green');
+                         btn.classList.add('text-gray-500');
+                    });
+                    
+                    const newStatus = button.dataset.status;
+                    currentStatusFilter = newStatus;
+                    
+                    button.classList.add('text-bingo-green');
+                    button.style.borderBottom = '3px solid var(--tw-colors-bingo-green)';
+                    renderReservations();
+                });
+            });
+            // Inicializar la pestaña PENDIENTE_PAGO
+            document.querySelector('[data-status="PENDIENTE_PAGO"]').click();
+        }
+
+
+        window.showProofModal = (url, reference) => {
+            if (!url) {
+                showStatus('El cliente no subió un comprobante de imagen.', true, true);
+                return;
+            }
+            proofImage.src = url;
+            proofRef.textContent = `Referencia del cliente: ${reference}`;
+            openModal('proof-modal');
+        }
+
+
+        window.updateReservationStatus = async (docId, newStatus) => {
+            if (!db) {
+                showStatus('Base de datos no disponible.', true, true);
+                return;
+            }
+
+            showStatus(`Cambiando estado a ${newStatus}...`);
+            
+            try {
+                const docRef = doc(db, `artifacts/${appId}/public/data/reservations`, docId);
+                
+                await updateDoc(docRef, {
+                    status: newStatus,
+                    adminActionTimestamp: new Date(),
+                    adminId: auth.currentUser?.uid || 'admin-manual',
+                });
+
+                hideStatus();
+                // Firestore listener se encargará de actualizar la UI automáticamente.
+                showStatus(`Reserva ${docId} actualizada a ${newStatus}.`, false, true);
+
+            } catch (error) {
+                console.error("Error al actualizar el estado:", error);
+                showStatus('Error al actualizar la reserva. Revisa la consola.', true, true);
+            }
+        }
+
+        // Inicializar la aplicación al cargar la ventana
+        window.onload = initFirebase;
+    </script>
+</body>
+</html>
+
