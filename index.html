@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bingo Online - Compra y Reserva</title>
-    <!-- Carga de Tailwind CSS para estilos modernos y responsivos -->
+    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Configuración de Fuentes y Colores de Bingo -->
     <script>
         tailwind.config = {
             theme: {
@@ -23,28 +22,30 @@
         }
     </script>
     <style>
-        /* Estilos generales para el fondo y la fuente */
-        body {
-            background-color: #f0f0f0;
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
+        body { background-color: #f0f0f0; min-height: 100vh; }
+        /* Ocultar flechas del input number */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
         }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col items-center p-4">
 
-    <!-- MENSAJE DE CARGA/ESTADO (Se usa como Loading y como Modal de Alerta) -->
+    <!-- MODAL/STATUS: Mensajes de Carga, Error y Éxito -->
     <div id="status-message" class="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center hidden">
         <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm">
             <svg id="loading-spinner" class="animate-spin h-8 w-8 text-bingo-green mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p id="status-text" class="text-gray-700 font-semibold">Cargando aplicación...</p>
+            <p id="status-text" class="text-gray-700 font-semibold">Inicializando aplicación...</p>
+            <button id="close-status-btn" class="mt-4 bg-bingo-green text-white px-4 py-2 rounded-lg hidden" onclick="hideStatus()">Cerrar</button>
         </div>
     </div>
 
-    <!-- Contenedor Principal -->
+    <!-- Contenedor Principal de Compra -->
     <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden mt-4">
 
         <!-- Encabezado del Evento -->
@@ -76,25 +77,22 @@
             <form id="purchase-form" class="mt-6 space-y-4">
                 <input id="name-input" type="text" placeholder="Nombre completo" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green">
                 <div class="flex space-x-2">
-                    <select class="p-3 border border-gray-300 rounded-lg w-1/4 focus:ring-bingo-green focus:border-bingo-green">
-                        <option value="+58">+58</option>
+                    <select id="country-code" class="p-3 border border-gray-300 rounded-lg w-1/4 focus:ring-bingo-green focus:border-bingo-green">
+                        <option value="+58">+58 (VEN)</option>
                     </select>
                     <input id="whatsapp-input" type="tel" placeholder="Número de WhatsApp (ej: 4121234567)" required class="w-3/4 p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green">
                 </div>
                 
                 <button type="submit" id="main-purchase-btn" class="w-full bg-bingo-yellow text-bingo-green font-extrabold py-3 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-150">
-                    COMPRAR CARTONES
+                    CONTINUAR Y ELEGIR CARTONES
                 </button>
             </form>
         </div>
     </div>
-
-    <!-- Botón de Consultar Mis Cartones (Simulación) -->
-    <div class="w-full max-w-lg mt-4">
-        <button id="consult-cartones-btn" class="w-full bg-gray-300 text-gray-800 font-bold py-3 rounded-xl hover:bg-gray-400 transition duration-150 flex items-center justify-center space-x-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
-            <span>CONSULTAR MIS CARTONES</span>
-        </button>
+    
+    <!-- Botón de Acceso Admin (Para ti) -->
+    <div class="w-full max-w-lg mt-4 text-center">
+        <a href="admin.html" target="_blank" class="text-sm text-gray-500 hover:text-bingo-green underline">Acceder al Panel de Administración</a>
     </div>
 
     <!-- ========================================================================= -->
@@ -109,11 +107,11 @@
                 </button>
             </div>
             <div class="p-6">
-                <p class="text-sm text-gray-600 mb-4">Selecciona tus cartones (Máximo: <span id="max-selection"></span>)</p>
-                <input type="text" id="filter-input" placeholder="Filtra tus cartones favoritos..." class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-bingo-green focus:border-bingo-green">
+                <p class="text-sm text-gray-600 mb-4">Selecciona tus cartones (Máximo: <span id="max-selection" class="font-bold"></span>)</p>
+                <input type="number" id="filter-input" placeholder="Filtra tus cartones favoritos por número..." class="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-bingo-green focus:border-bingo-green" pattern="\d*">
                 
                 <div id="selected-message" class="text-center text-sm text-bingo-green font-semibold mb-4 hidden">
-                    Ya seleccionaste tus cartones, continúa con tu compra
+                    ¡Selección completa! Continúa con tu reserva.
                     <p class="text-xl mt-1">↓</p>
                 </div>
 
@@ -124,7 +122,7 @@
                 <p id="selection-error" class="text-red-500 text-sm mt-3 hidden">Debes seleccionar la cantidad exacta de cartones.</p>
                 
                 <button id="continue-selection-btn" class="w-full bg-bingo-yellow text-bingo-green font-extrabold py-3 rounded-xl shadow-lg hover:bg-yellow-500 transition duration-150 mt-4" disabled>
-                    CONTINUAR
+                    CONFIRMAR SELECCIÓN Y PAGO
                 </button>
             </div>
         </div>
@@ -136,7 +134,7 @@
     <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 hidden" aria-modal="true" role="dialog">
         <div class="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
             <div class="p-4 flex justify-between items-center bg-bingo-green text-white">
-                <h2 class="text-lg font-semibold">Proceso de compra</h2>
+                <h2 class="text-lg font-semibold">Paso Final: Confirmar Pago</h2>
                 <button onclick="closeModal('payment-modal')" class="text-white hover:text-gray-300">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
@@ -144,20 +142,21 @@
             <div class="p-6">
                 <!-- Temporizador y Alerta -->
                 <div class="bg-bingo-yellow/20 border-l-4 border-bingo-yellow p-4 mb-4 rounded-lg">
-                    <p class="text-sm text-gray-800 font-semibold"><svg class="w-5 h-5 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"></path></svg> Tienes <span id="timer-display" class="font-extrabold text-bingo-green">05:00</span> para completar el pago.</p>
-                    <p class="text-xs text-gray-600 mt-1">Asegúrate de pagar el monto exacto que indicamos. De lo contrario no podremos validar la operación.</p>
+                    <p class="text-sm text-gray-800 font-semibold"><svg class="w-5 h-5 inline mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l3 3a1 1 0 001.414-1.414L11 9.586V6z" clip-rule="evenodd"></path></svg> Tienes <span id="timer-display" class="font-extrabold text-bingo-green">05:00</span> para subir el comprobante.</p>
+                    <p class="text-xs text-gray-600 mt-1">Tu reserva se mantiene activa por 5 minutos.</p>
                 </div>
 
                 <!-- Detalles de Pago -->
-                <div class="space-y-3 mb-6">
+                <div class="space-y-3 mb-6 bg-gray-50 p-4 rounded-lg border">
                     <div class="flex justify-between items-center border-b pb-2">
-                        <span class="font-semibold text-gray-700">Monto exacto:</span>
+                        <span class="font-semibold text-gray-700">Monto exacto a pagar:</span>
                         <div class="flex items-center space-x-2">
                             <span class="text-lg font-bold text-bingo-green">Bs <span id="payment-amount">60,00</span></span>
-                            <button onclick="copyToClipboard('payment-amount')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                            <button type="button" onclick="copyToClipboard('payment-amount-copy')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                            <!-- Elemento oculto para copiar -->
+                            <span id="payment-amount-copy" class="hidden">60.00</span> 
                         </div>
                     </div>
-                    <!-- PAGO MÓVIL DUMMY DATA -->
                     <div class="flex justify-between items-center">
                         <span class="font-semibold text-gray-700">Banco:</span>
                         <span class="text-sm font-medium">Banco de Venezuela (0102)</span>
@@ -166,72 +165,73 @@
                         <span class="font-semibold text-gray-700">Teléfono:</span>
                         <div class="flex items-center space-x-2">
                             <span class="text-sm font-medium" id="payment-phone">04244945763</span>
-                            <button onclick="copyToClipboard('payment-phone')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                            <button type="button" onclick="copyToClipboard('payment-phone')" class="text-gray-400 hover:text-bingo-green">📋</button>
                         </div>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="font-semibold text-gray-700">Cédula:</span>
                         <div class="flex items-center space-x-2">
                             <span class="text-sm font-medium" id="payment-cedula">V17450017</span>
-                            <button onclick="copyToClipboard('payment-cedula')" class="text-gray-400 hover:text-bingo-green">📋</button>
+                            <button type="button" onclick="copyToClipboard('payment-cedula')" class="text-gray-400 hover:text-bingo-green">📋</button>
                         </div>
                     </div>
                     <div class="flex justify-between items-center border-t pt-2">
-                        <span class="font-semibold text-gray-700">Cartones seleccionados:</span>
+                        <span class="font-semibold text-gray-700">Cartones reservados:</span>
                         <span class="text-sm font-medium" id="selected-cards-display">152</span>
                     </div>
                 </div>
 
                 <!-- Formulario de Comprobante -->
                 <form id="payment-form" class="space-y-4">
-                    <input id="ref-input" type="text" placeholder="Últimos 4 dígitos de la referencia" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green" maxlength="4" pattern="\d{4}">
+                    <input id="ref-input" type="text" placeholder="Últimos 4 dígitos de la referencia" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-bingo-green focus:border-bingo-green" maxlength="4" pattern="\d{4}" inputmode="numeric">
                     
                     <div class="border border-dashed border-gray-400 rounded-lg p-4 text-center">
                         <label for="proof-file" class="cursor-pointer text-bingo-green font-bold flex items-center justify-center space-x-2 hover:underline">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L6.914 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                            <span id="file-upload-text">Subir comprobante de pago (Opcional)</span>
+                            <span id="file-upload-text">Subir comprobante de pago (Requerido)</span>
                         </label>
-                        <input id="proof-file" type="file" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                        <input id="proof-file" type="file" accept="image/*" class="hidden" onchange="updateFileName(this)" required>
                     </div>
+                    <p class="text-xs text-gray-500 text-center">Formato de imagen: JPG o PNG. Máximo 1MB.</p>
 
-                    <button type="submit" class="w-full bg-bingo-green text-white font-extrabold py-3 rounded-xl shadow-lg hover:bg-green-700 transition duration-150">
-                        RESERVAR CARTONES
+                    <button type="submit" class="w-full bg-bingo-green text-white font-extrabold py-3 rounded-xl shadow-lg hover:bg-green-700 transition duration-150" id="payment-submit-btn">
+                        COMPLETAR RESERVA
                     </button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Firebase Imports -->
+
+    <!-- Firebase Imports y Lógica de la Aplicación -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 
         // =========================================================================
         // CONFIGURACIÓN Y ESTADO INICIAL
         // =========================================================================
 
-        // Variables globales (proporcionadas por el entorno de Canvas)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        let app, db, auth;
+        let app, db, auth, storage;
         let userId = null;
         let isAuthReady = false;
 
-        // Constantes y Estado de la Aplicación
         const COST_PER_CARD = 60;
-        let availableCartones = []; // Lista completa de cartones cargados desde cartones.json
-        let reservedCardIds = new Set(); // IDs de cartones reservados en Firestore
+        let availableCartones = []; 
+        let reservedCardIds = new Set(); // IDs de cartones reservados (PENDIENTE o PAGADO)
         let totalAvailable = 0;
         let qtyToBuy = 1;
         let selectedCartones = [];
         let timerInterval;
 
-        // Elementos de la UI
+        // UI Elements
         const statusMessage = document.getElementById('status-message');
         const statusText = document.getElementById('status-text');
         const availableCardsEl = document.getElementById('available-cards');
@@ -248,28 +248,34 @@
         const selectionErrorEl = document.getElementById('selection-error');
         const continueSelectionBtn = document.getElementById('continue-selection-btn');
         const selectedMessageEl = document.getElementById('selected-message');
-        const paymentAmountEl = document.getElementById('payment-amount');
+        const paymentAmountEl = document.getElementById('payment-amount-copy'); // Usamos el oculto para el valor
+        const paymentAmountDisplayEl = document.getElementById('total-amount'); // Para mostrar el valor
         const selectedCardsDisplayEl = document.getElementById('selected-cards-display');
         const paymentForm = document.getElementById('payment-form');
         const timerDisplayEl = document.getElementById('timer-display');
         const refInput = document.getElementById('ref-input');
         const filterInput = document.getElementById('filter-input');
+        const proofFile = document.getElementById('proof-file');
+        const paymentSubmitBtn = document.getElementById('payment-submit-btn');
+
 
         // =========================================================================
         // FUNCIONES GLOBALES DE UI
         // =========================================================================
 
-        window.showStatus = (text, isError = false) => {
+        window.showStatus = (text, isError = false, isFinal = false) => {
             statusText.textContent = text;
             statusMessage.classList.remove('hidden');
             const spinner = document.getElementById('loading-spinner');
             if (spinner) {
-                if (isError) {
+                if (isError || isFinal) {
                     spinner.classList.add('hidden');
                 } else {
                     spinner.classList.remove('hidden');
                 }
             }
+            // Mostrar botón de cerrar para mensajes finales/error
+            document.getElementById('close-status-btn').classList.toggle('hidden', !isFinal && !isError);
         }
 
         window.hideStatus = () => {
@@ -284,17 +290,13 @@
         window.closeModal = (id) => {
             document.getElementById(id).classList.add('hidden');
             document.body.style.overflow = '';
-            // Limpiar el temporizador si estamos cerrando el modal de pago
             if (id === 'payment-modal') {
                 clearInterval(timerInterval);
             }
         }
 
-        // Simulación de función alert/modal (prohibido usar alert() nativo)
-        function alertCustom(message) {
-            // Reutilizar el modal de estado para mostrar mensajes de corta duración
-            showStatus(message, true);
-            setTimeout(hideStatus, 4000);
+        function alertCustom(message, isError = false) {
+            showStatus(message, isError, true);
         }
 
         // =========================================================================
@@ -302,27 +304,28 @@
         // =========================================================================
 
         async function initFirebase() {
-            showStatus('Inicializando Firebase y autenticando...');
+            showStatus('Inicializando base de datos...');
             try {
+                setLogLevel('error'); // Minimizar logs en el cliente
                 if (Object.keys(firebaseConfig).length === 0) {
-                    throw new Error("La configuración de Firebase está vacía. Usando modo de simulación.");
+                    throw new Error("Configuración de Firebase vacía. Usando modo de simulación.");
                 }
-                setLogLevel('debug');
+                
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                storage = getStorage(app);
 
                 await new Promise(resolve => {
                     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            userId = user.uid;
-                        } else {
+                        if (!user) {
                             if (initialAuthToken) {
                                 await signInWithCustomToken(auth, initialAuthToken);
                             } else {
                                 await signInAnonymously(auth);
                             }
                         }
+                        userId = auth.currentUser?.uid || crypto.randomUUID();
                         isAuthReady = true;
                         unsubscribe();
                         resolve();
@@ -334,10 +337,9 @@
 
             } catch (error) {
                 console.error("Error al inicializar Firebase o autenticar:", error);
-                // Si falla Firebase, cargamos datos de simulación
-                isAuthReady = true;
+                isAuthReady = false; // Forzar modo simulación si falla
                 userId = 'simulacion-user-' + Math.random().toString(36).substring(2, 9);
-                showStatus('Error de conexión a la base de datos. Cargando modo SIMULACIÓN...', true);
+                showStatus('Error de conexión a la base de datos. Usando modo SIMULACIÓN.', true);
                 loadCartonesAndListenToReservations();
             }
         }
@@ -346,39 +348,38 @@
         // 2. DATA LOADING & REALTIME LISTENER
         // =========================================================================
 
-        // Carga cartones y configura el listener de Firestore
         async function loadCartonesAndListenToReservations() {
-            // 1. Cargar cartones de prueba (fetch a cartones.json)
+            // 1. Cargar cartones disponibles desde el archivo local (cartones.json)
             try {
                 const response = await fetch('./cartones.json');
                 if (!response.ok) throw new Error('No se encontró cartones.json. Usando datos internos.');
                 availableCartones = await response.json();
             } catch (error) {
                 console.warn(error.message);
-                availableCartones = generateFallbackCards(10);
-                // Si falla, usamos un conjunto fijo de 10 cartones de respaldo.
+                availableCartones = generateFallbackCards(100);
             }
             
-            // 2. Listener de reservas de Firestore (solo si Firebase está listo)
+            // 2. Listener de reservas de Firestore
             if (isAuthReady && db) {
+                // Solo escuchamos reservas que estén PENDIENTE o PAGADO
                 const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
-                onSnapshot(reservationsCollection, (snapshot) => {
+                const q = query(reservationsCollection); 
+                
+                onSnapshot(q, (snapshot) => {
                     const newReservedIds = new Set();
                     snapshot.forEach((doc) => {
                         const data = doc.data();
-                        if (data.cardIds && Array.isArray(data.cardIds)) {
-                            // Solo considera como "reservados" los que aún no están confirmados como PAGADOS
-                            if (data.status !== 'PAGADO') { 
-                                data.cardIds.forEach(id => newReservedIds.add(id));
-                            }
+                        // Solo bloqueamos si la reserva está PENDIENTE o PAGADO
+                        if (['PENDIENTE_PAGO', 'PAGADO'].includes(data.status) && Array.isArray(data.cardIds)) {
+                            data.cardIds.forEach(id => newReservedIds.add(id));
                         }
                     });
                     reservedCardIds = newReservedIds;
-                    updateCardStatus(); // Actualiza el contador y la UI
+                    updateCardStatus(); 
                     hideStatus();
                 }, (error) => {
                     console.error("Error al escuchar reservas de Firestore:", error);
-                    updateCardStatus(); // Ejecuta con datos de simulación
+                    updateCardStatus();
                     hideStatus();
                 });
             } else {
@@ -389,20 +390,15 @@
             }
         }
 
-        // Actualiza el estado visual de los cartones disponibles y habilita/deshabilita la compra
+        // Actualiza el estado visual de los cartones disponibles
         function updateCardStatus() {
-            // Filtramos los cartones realmente disponibles
-            const availableCardObjects = availableCartones.filter(card => !reservedCardIds.has(card.id));
-            totalAvailable = availableCardObjects.length;
+            const totalCards = availableCartones.length;
+            totalAvailable = totalCards - reservedCardIds.size;
             
-            // Si el texto de availableCardsEl ya contiene "(Simulación)", lo conservamos
-            if (db) {
-                availableCardsEl.textContent = totalAvailable;
-            } else {
-                availableCardsEl.textContent = `${totalAvailable} (Simulación)`;
-            }
+            const modeText = db ? '' : ' (Simulación)';
+            availableCardsEl.textContent = `${totalAvailable}${modeText}`;
 
-            // Forzar actualización de cantidad si excede la disponibilidad
+            // Si la cantidad a comprar es mayor a la disponible, ajustarla
             if (qtyToBuy > totalAvailable) {
                 qtyToBuy = totalAvailable > 0 ? 1 : 0;
             }
@@ -411,19 +407,14 @@
                 qtyToBuy = 0;
                 mainPurchaseBtn.disabled = true;
                 mainPurchaseBtn.textContent = "AGOTADO";
-                updateQuantityAndTotal(0);
             } else {
                 mainPurchaseBtn.disabled = false;
-                mainPurchaseBtn.textContent = "COMPRAR CARTONES";
-                updateQuantityAndTotal(0); // Actualiza la UI con la cantidad corregida
+                mainPurchaseBtn.textContent = "CONTINUAR Y ELEGIR CARTONES";
             }
-
-            // Asegurar que los botones de cantidad reflejen el estado
-            document.getElementById('qty-minus').disabled = qtyToBuy <= 1;
-            document.getElementById('qty-plus').disabled = qtyToBuy >= totalAvailable;
+            updateQuantityAndTotal(0); // Forzar actualización de UI con la cantidad corregida
         }
 
-        // Generador de cartones de respaldo en caso de que cartones.json falle
+        // Generador de cartones de respaldo
         function generateFallbackCards(count) {
             const fallback = [];
             for (let i = 1; i <= count; i++) {
@@ -440,10 +431,9 @@
         }
 
         // =========================================================================
-        // 3. LÓGICA DE INTERACCIÓN DE LA UI
+        // 3. LÓGICA DE INTERACCIÓN DE LA UI (PÁGINA PRINCIPAL)
         // =========================================================================
 
-        // Función para actualizar la cantidad y el total a pagar
         function updateQuantityAndTotal(delta) {
             qtyToBuy += delta;
             
@@ -464,14 +454,16 @@
             else if (qtyToBuy === 12) total = 400;
             else total = qtyToBuy * COST_PER_CARD;
 
-            totalAmountEl.textContent = total.toFixed(2).replace('.', ',');
+            const totalFormatted = total.toFixed(2);
+            paymentAmountDisplayEl.textContent = totalFormatted.replace('.', ',');
+            document.getElementById('payment-amount-copy').textContent = totalFormatted; // Valor real para copiar
         }
 
         // Event Listeners para cantidad
         document.getElementById('qty-minus').addEventListener('click', () => updateQuantityAndTotal(-1));
         document.getElementById('qty-plus').addEventListener('click', () => updateQuantityAndTotal(1));
         
-        // Event Listener para el formulario de Compra
+        // Event Listener para el formulario de Compra (Paso 1)
         purchaseForm.addEventListener('submit', (e) => {
             e.preventDefault();
             // Abrir modal de selección de cartones
@@ -482,33 +474,29 @@
 
         function showSelectionModal() {
             if (totalAvailable === 0) {
-                 alertCustom('No hay cartones disponibles para comprar.');
+                 alertCustom('No hay cartones disponibles para comprar.', true);
                  return;
             }
             maxSelectionEl.textContent = qtyToBuy;
             selectedCartones = []; // Resetear selección
             filterInput.value = ''; // Limpiar filtro
             
-            // 1. Generar la grilla de cartones disponibles
             renderCardsGrid();
-            
             updateSelectionState();
             openModal('selection-modal');
         }
 
-        // Renderiza los botones de cartones en la grilla
         function renderCardsGrid() {
             cardsGrid.innerHTML = '';
-            const filter = filterInput.value.trim().toLowerCase();
+            const filter = filterInput.value.trim();
             
-            // Filtrar y mostrar solo cartones disponibles
             const cardsToDisplay = availableCartones
                 .filter(card => !reservedCardIds.has(card.id)) // Solo disponibles
                 .filter(card => String(card.id).includes(filter) || filter === ''); // Aplicar filtro
             
             if (cardsToDisplay.length === 0) {
                 cardsGrid.innerHTML = `<div class="col-span-5 text-center p-8 text-gray-500">
-                    No se encontraron cartones disponibles que coincidan con "${filter}".
+                    No se encontraron cartones disponibles.
                 </div>`;
                 return;
             }
@@ -517,11 +505,10 @@
                 const button = document.createElement('button');
                 button.textContent = card.id;
                 
-                // Determinar el estilo basado en si está seleccionado
                 const isSelected = selectedCartones.includes(card.id);
                 button.className = isSelected 
-                    ? 'card-btn bg-bingo-yellow text-bingo-green font-extrabold ring-2 ring-bingo-green w-full aspect-square rounded-full flex items-center justify-center text-sm transition duration-100'
-                    : 'card-btn bg-gray-200 text-gray-700 w-full aspect-square rounded-full flex items-center justify-center text-sm font-semibold hover:bg-bingo-yellow hover:text-bingo-green transition duration-100';
+                    ? 'card-btn bg-bingo-yellow text-bingo-green font-extrabold ring-2 ring-bingo-green w-full aspect-square rounded-lg flex items-center justify-center text-sm transition duration-100'
+                    : 'card-btn bg-gray-200 text-gray-700 w-full aspect-square rounded-lg flex items-center justify-center text-sm font-semibold hover:bg-bingo-yellow/70 hover:text-bingo-green transition duration-100';
                     
                 button.dataset.cardId = card.id;
                 button.addEventListener('click', () => toggleCardSelection(card.id, button));
@@ -529,24 +516,19 @@
             });
         }
         
-        // Listener para filtrar la grilla
         filterInput.addEventListener('input', renderCardsGrid);
-
 
         function toggleCardSelection(id, button) {
             const index = selectedCartones.indexOf(id);
             if (index > -1) {
-                // Deseleccionar
                 selectedCartones.splice(index, 1);
                 button.classList.remove('bg-bingo-yellow', 'text-bingo-green', 'font-extrabold', 'ring-2', 'ring-bingo-green');
                 button.classList.add('bg-gray-200', 'text-gray-700');
             } else if (selectedCartones.length < qtyToBuy) {
-                // Seleccionar
                 selectedCartones.push(id);
                 button.classList.remove('bg-gray-200', 'text-gray-700');
                 button.classList.add('bg-bingo-yellow', 'text-bingo-green', 'font-extrabold', 'ring-2', 'ring-bingo-green');
             } else {
-                // Límite alcanzado
                 alertCustom(`Solo puedes seleccionar ${qtyToBuy} cartones.`);
             }
             updateSelectionState();
@@ -556,7 +538,6 @@
             const count = selectedCartones.length;
             const required = qtyToBuy;
 
-            // Habilitar/Deshabilitar botón de CONTINUAR
             if (count === required) {
                 continueSelectionBtn.disabled = false;
                 selectedMessageEl.classList.remove('hidden');
@@ -566,7 +547,7 @@
                 selectedMessageEl.classList.add('hidden');
                 selectionErrorEl.classList.remove('hidden');
             }
-            selectionErrorEl.textContent = `Seleccionados: ${count} de ${required}. Debes seleccionar la cantidad exacta.`;
+            selectionErrorEl.textContent = `Seleccionados: ${count} de ${required}.`;
         }
 
         // Event Listener para continuar selección
@@ -575,20 +556,19 @@
             showPaymentModal();
         });
 
-        // ======================== MODAL DE PAGO ========================
+        // ======================== MODAL DE PAGO (Paso 2) ========================
         
         function showPaymentModal() {
-            const total = qtyToBuy * COST_PER_CARD; // Recalculamos el total sin promoción para el display de pago exacto.
-            paymentAmountEl.textContent = total.toFixed(2).replace('.', ',');
+            // El monto ya está actualizado por updateQuantityAndTotal
             selectedCardsDisplayEl.textContent = selectedCartones.join(', ');
-            
-            // Iniciar temporizador de 5 minutos
-            startTimer(5 * 60);
+            proofFile.value = ''; // Limpiar el input file
+            document.getElementById('file-upload-text').textContent = 'Subir comprobante de pago (Requerido)';
+            refInput.value = '';
 
+            startTimer(5 * 60); // Iniciar temporizador de 5 minutos
             openModal('payment-modal');
         }
 
-        // Iniciar Temporizador
         function startTimer(durationSeconds) {
             clearInterval(timerInterval);
             let time = durationSeconds;
@@ -601,8 +581,7 @@
                 if (time <= 0) {
                     clearInterval(timerInterval);
                     timerDisplayEl.textContent = '00:00';
-                    alertCustom('El tiempo para la reserva ha expirado. Intenta de nuevo.');
-                    // Forzar el cierre para evitar envíos tardíos
+                    alertCustom('El tiempo para la reserva ha expirado. Vuelve a iniciar el proceso.', true);
                     closeModal('payment-modal'); 
                     return;
                 }
@@ -616,60 +595,62 @@
         // Event Listener para Formulario de Pago (Reserva)
         paymentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const reference = refInput.value;
-            const name = nameInput.value;
-            const whatsapp = whatsappInput.value;
-            const amount = parseFloat(paymentAmountEl.textContent.replace(',', '.')); // Monto exacto para el pago
+            paymentSubmitBtn.disabled = true;
+
+            const proof = proofFile.files[0];
+            if (!proof) {
+                 alertCustom('Debes subir el comprobante de pago.', true);
+                 paymentSubmitBtn.disabled = false;
+                 return;
+            }
 
             closeModal('payment-modal');
-            showStatus('Reservando cartones y generando mensaje de WhatsApp...');
+            showStatus('Subiendo comprobante y registrando reserva...');
 
             try {
+                // 1. Subir la imagen a Firebase Storage
+                const reservationId = Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
+                const storageRef = ref(storage, `proofs/${appId}/${reservationId}_${proof.name}`);
+                const snapshot = await uploadBytes(storageRef, proof);
+                const proofUrl = await getDownloadURL(snapshot.ref);
+
+                // 2. Registrar Reserva en Firestore
+                const amount = parseFloat(document.getElementById('payment-amount-copy').textContent);
                 const reservationData = {
+                    reservationId: reservationId,
                     userId: userId,
-                    name: name,
-                    whatsapp: whatsapp,
+                    name: nameInput.value,
+                    whatsapp: document.getElementById('country-code').value + whatsappInput.value,
                     cardIds: selectedCartones,
+                    quantity: qtyToBuy,
                     amount: amount,
-                    reference: reference,
-                    proofFile: document.getElementById('proof-file').files[0] ? 'Subido' : 'No subido',
+                    reference: refInput.value,
+                    proofUrl: proofUrl, // URL pública del comprobante
                     timestamp: serverTimestamp ? serverTimestamp() : new Date(),
                     status: 'PENDIENTE_PAGO',
                 };
-
-                // 1. Guardar Reserva en Firestore
-                if (isAuthReady && db) {
+                
+                if (db) {
                     const reservationsCollection = collection(db, `artifacts/${appId}/public/data/reservations`);
+                    // Usar un ID personalizado para la reserva para facilitar la consulta en Storage si se necesita
                     await addDoc(reservationsCollection, reservationData);
-                    console.log("Reserva guardada en Firestore:", reservationData);
+                    console.log("Reserva guardada:", reservationData);
                 } else {
-                    console.warn("Firestore no está disponible. La reserva NO se guardó. (Simulación)");
+                    console.warn("Firestore no disponible. Reserva NO guardada (Simulación).");
                 }
-
-                // 2. Generar enlace de WhatsApp
-                const cartonesList = selectedCartones.join(', ');
-                const whatsappMessage = `¡Hola! Acabo de realizar una RESERVA en Bingo Online.\n\n` +
-                                        `*Datos de la Reserva:*\n` +
-                                        `👤 Nombre: ${name}\n` +
-                                        `📞 Teléfono: ${whatsapp}\n` +
-                                        `🔢 Cartones (${qtyToBuy}): ${cartonesList}\n` +
-                                        `💵 Monto Pagado: Bs ${amount.toFixed(2).replace('.', ',')}\n` +
-                                        `#️⃣ Ref. Pago Móvil: ${reference}\n\n` +
-                                        `Por favor, procesar mi solicitud y enviar mis cartones.`;
-                
-                // Usar el número de Pago Móvil de la simulación
-                const whatsappTargetNumber = '584244945763';
-                const whatsappUrl = `https://wa.me/${whatsappTargetNumber}?text=${encodeURIComponent(whatsappMessage)}`;
-                
-                window.open(whatsappUrl, '_blank');
                 
                 hideStatus();
-                alertCustom('¡Reserva registrada! Te hemos redirigido a WhatsApp para que finalices el envío.');
+                alertCustom('¡Reserva completada! Espera la confirmación de nuestro administrador.', false, true);
+                // Limpiar formulario principal
+                purchaseForm.reset();
+                selectedCartones = [];
+                updateQuantityAndTotal(1 - qtyToBuy); // Restablecer a 1
                 
             } catch (error) {
                 console.error("Error al procesar la reserva:", error);
-                showStatus('Error grave al procesar la reserva. Intenta de nuevo.', true);
+                showStatus('Error grave al registrar la reserva. Intenta de nuevo.', true, true);
+            } finally {
+                 paymentSubmitBtn.disabled = false;
             }
         });
 
@@ -678,36 +659,28 @@
 
         // Función para copiar al portapapeles
         window.copyToClipboard = (elementId) => {
-            let textToCopy;
-            // Si es el monto, se usa el valor calculado, sino el contenido del elemento
-            if (elementId === 'payment-amount') {
-                // Obtenemos el valor real para copiar (sin el "Bs ")
-                textToCopy = paymentAmountEl.textContent;
-            } else {
-                textToCopy = document.getElementById(elementId).textContent;
-            }
-            
-            // Usar execCommand('copy') por restricción de iframe
+            const el = document.getElementById(elementId);
+            let textToCopy = el.textContent;
+
             const tempInput = document.createElement('textarea');
-            tempInput.value = textToCopy.replace('Bs ', '').replace(',', '.'); // Limpiar formato para copiar solo el número
+            // Limpiar formato (Bs ,) para copiar solo el número limpio (e.g., 60.00)
+            tempInput.value = textToCopy.replace('Bs ', '').replace(',', '.'); 
             document.body.appendChild(tempInput);
             tempInput.select();
             document.execCommand('copy');
             document.body.removeChild(tempInput);
-            alertCustom('¡Copiado: ' + textToCopy + '!');
+            alertCustom('¡Copiado: ' + textToCopy + '!', false);
         }
 
         // Función para actualizar el nombre del archivo subido en el UI
         window.updateFileName = (input) => {
-            const fileName = input.files[0] ? input.files[0].name : 'Subir comprobante de pago (Opcional)';
+            const fileName = input.files[0] ? input.files[0].name : 'Subir comprobante de pago (Requerido)';
             document.getElementById('file-upload-text').textContent = fileName;
         }
-
 
         // Inicializar la aplicación al cargar la ventana
         window.onload = initFirebase;
     </script>
-
 </body>
 </html>
 
