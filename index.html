@@ -3,61 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bingo Online - Cartones</title>
+    <title>Bingo Carabobo Clone</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
+
     <header>
-        <h1>Bingo Online</h1>
-        <p>¡Selecciona tu cartón y juega!</p>
+        <h1>BINGO ONLINE</h1>
     </header>
 
     <main>
-        <section class="search-section">
-            <input type="number" id="cartonIdInput" placeholder="Buscar cartón por ID (ej. 1)">
-            <button id="searchButton">Buscar Cartón</button>
-            <button id="showAllAvailableButton">Ver Todos Disponibles</button>
-        </section>
+        <div class="search-section">
+            <input type="number" placeholder="Buscar # de cartón...">
+            <button>Buscar</button>
+        </div>
 
-        <section class="status-section">
-            <p>Cartones Disponibles: <span id="availableCount">Cargando...</span> / <span id="totalCount">Cargando...</span></p>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="salesProgressBar"></div>
-            </div>
-        </section>
-
-        <section class="bingo-cards-container" id="bingoCardsContainer">
-            <p class="loading-message">Cargando cartones...</p>
-        </section>
-
-        <div id="cardModal" class="modal">
-            <div class="modal-content">
-                <span class="close-button">&times;</span>
-                <h2>Cartón <span id="modalCardId"></span></h2>
-                <div id="modalCardContent" class="bingo-card large-card">
-                    </div>
-                <div id="modalCardStatus" class="card-status"></div>
-                <button id="reserveButton" class="reserve-button">Reservar por 5 minutos</button>
-                <div id="reservationTimer" class="timer"></div>
-                <div id="paymentInstructions" class="payment-instructions" style="display:none;">
-                    <h3>Instrucciones de Pago</h3>
-                    <p>Realiza tu pago a la siguiente cuenta:</p>
-                    <p>Banco: Banesco, Cta: 0134-XXXX-XXXX-XXXX</p>
-                    <p>Beneficiario: TU NOMBRE, C.I.: V-XXXXXXXX</p>
-                    <p>Monto: 5$ (o equivalente)</p>
-                    <input type="file" id="paymentProofInput" accept="image/*">
-                    <button id="uploadProofButton">Subir Comprobante</button>
-                    <p id="uploadStatus"></p>
-                </div>
-            </div>
+        <div id="bingoCardsContainer" class="bingo-cards-container">
+            <p style="color: white; text-align: center;">Cargando cartones...</p>
         </div>
     </main>
 
-    <footer>
-        <p>&copy; 2023 Tu Bingo Online. Todos los derechos reservados.</p>
-    </footer>
+    <div id="cardModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 style="color: var(--accent-gold);">CARTÓN <span id="modalCardId"></span></h2>
+            
+            <div id="modalCardContent" class="bingo-card-visual"></div>
+
+            <div id="timer" style="color: white; margin: 10px 0;"></div>
+            <button id="actionButton" class="reserve-button">RESERVAR CARTÓN</button>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
